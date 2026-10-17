@@ -40,3 +40,10 @@ data/shoes.db-wal
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# PWA generated service worker files
+public/sw*
+public/workbox-*
+public/worker-*
+public/fallback-*
+
