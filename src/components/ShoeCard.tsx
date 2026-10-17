@@ -2,7 +2,7 @@
 
 import React from "react";
 import { RunningShoe } from "@/types";
-import { CATEGORIES_META } from "@/services/shoe.service";
+import { CATEGORIES_META } from "@/constants/categories";
 import { Gauge, Scale, MoveVertical, ChevronRight } from "lucide-react";
 
 interface Props {
@@ -56,7 +56,7 @@ export function ShoeCard({ shoe, onClick }: Props) {
             <Scale className="w-3 h-3" />
             <span>Bobot</span>
           </div>
-          <span className="text-xs font-bold text-slate-800">{shoe.specs.weightGrams}g</span>
+          <span className="text-xs font-bold text-slate-800">{shoe.specs?.weightGrams ?? "-"}g</span>
         </div>
 
         <div className="flex flex-col items-center">
@@ -64,7 +64,7 @@ export function ShoeCard({ shoe, onClick }: Props) {
             <MoveVertical className="w-3 h-3" />
             <span>Drop</span>
           </div>
-          <span className="text-xs font-bold text-slate-800">{shoe.specs.dropMm}mm</span>
+          <span className="text-xs font-bold text-slate-800">{shoe.specs?.dropMm ?? "-"}mm</span>
         </div>
 
         <div className="flex flex-col items-center">
@@ -72,14 +72,14 @@ export function ShoeCard({ shoe, onClick }: Props) {
             <span>Stack</span>
           </div>
           <span className="text-xs font-bold text-slate-800">
-            {shoe.specs.heelStackMm}/{shoe.specs.forefootStackMm}mm
+            {shoe.specs?.heelStackMm ?? "-"}/{shoe.specs?.forefootStackMm ?? "-"}mm
           </span>
         </div>
       </div>
 
       {/* Footer Info */}
       <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-        <span>Busa: <strong className="text-slate-600">{shoe.specs.foamType}</strong></span>
+        <span>Busa: <strong className="text-slate-600">{shoe.specs?.foamType ?? "-"}</strong></span>
         <div className="flex items-center text-emerald-600 font-semibold gap-0.5">
           <span>Lihat Lab</span>
           <ChevronRight className="w-3.5 h-3.5" />

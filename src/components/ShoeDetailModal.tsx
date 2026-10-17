@@ -2,7 +2,7 @@
 
 import React from "react";
 import { RunningShoe } from "@/types";
-import { CATEGORIES_META } from "@/services/shoe.service";
+import { CATEGORIES_META } from "@/constants/categories";
 import {
   X,
   ExternalLink,
@@ -86,29 +86,29 @@ export function ShoeDetailModal({ shoe, onClose }: Props) {
             <div className="grid grid-cols-2 gap-2.5 text-xs">
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <span className="text-slate-400">Berat (Weight)</span>
-                <p className="font-bold text-slate-900 text-sm">{shoe.specs.weightGrams} gram</p>
+                <p className="font-bold text-slate-900 text-sm">{shoe.specs?.weightGrams ?? "-"} gram</p>
               </div>
 
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <span className="text-slate-400">Heel-to-Toe Drop</span>
-                <p className="font-bold text-slate-900 text-sm">{shoe.specs.dropMm} mm</p>
+                <p className="font-bold text-slate-900 text-sm">{shoe.specs?.dropMm ?? "-"} mm</p>
               </div>
 
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <span className="text-slate-400">Heel / Forefoot Stack</span>
                 <p className="font-bold text-slate-900 text-sm">
-                  {shoe.specs.heelStackMm} / {shoe.specs.forefootStackMm} mm
+                  {shoe.specs?.heelStackMm ?? "-"} / {shoe.specs?.forefootStackMm ?? "-"} mm
                 </p>
               </div>
 
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <span className="text-slate-400">Pelat (Plate)</span>
-                <p className="font-bold text-slate-900 text-sm">{shoe.specs.plateType}</p>
+                <p className="font-bold text-slate-900 text-sm">{shoe.specs?.plateType ?? "-"}</p>
               </div>
 
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 col-span-2">
                 <span className="text-slate-400">Busa Sol (Midsole Foam)</span>
-                <p className="font-bold text-slate-900 text-sm">{shoe.specs.foamType}</p>
+                <p className="font-bold text-slate-900 text-sm">{shoe.specs?.foamType ?? "-"}</p>
               </div>
             </div>
           </div>
@@ -120,7 +120,7 @@ export function ShoeDetailModal({ shoe, onClose }: Props) {
               <span>Verdict Singkat</span>
             </h4>
             <p className="text-xs text-slate-700 leading-relaxed font-medium">
-              {shoe.verdict.summary}
+              {shoe.verdict?.summary ?? "-"}
             </p>
           </div>
 
@@ -132,7 +132,7 @@ export function ShoeDetailModal({ shoe, onClose }: Props) {
                 <span>Kelebihan (Pros)</span>
               </h5>
               <ul className="space-y-1.5 text-xs text-slate-700">
-                {shoe.verdict.pros.map((pro, i) => (
+                {(shoe.verdict?.pros || []).map((pro, i) => (
                   <li key={i} className="flex items-start gap-1.5">
                     <span className="text-emerald-500 font-bold">•</span>
                     <span>{pro}</span>
@@ -147,7 +147,7 @@ export function ShoeDetailModal({ shoe, onClose }: Props) {
                 <span>Kekurangan (Cons)</span>
               </h5>
               <ul className="space-y-1.5 text-xs text-slate-700">
-                {shoe.verdict.cons.map((con, i) => (
+                {(shoe.verdict?.cons || []).map((con, i) => (
                   <li key={i} className="flex items-start gap-1.5">
                     <span className="text-rose-500 font-bold">•</span>
                     <span>{con}</span>
