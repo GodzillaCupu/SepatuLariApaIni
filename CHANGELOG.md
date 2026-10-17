@@ -8,13 +8,18 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 
 ### Selesai Dikerjakan (Added / Completed)
 - **Struktur Proyek**: Inisialisasi Fullstack Next.js 14 App Router, TypeScript, dan Tailwind CSS.
-- **Database Universal**: 
+- **Integrasi Turso Cloud & Database Universal**: 
   - Definisi tabel `shoes` menggunakan Drizzle ORM (`src/db/schema.ts`).
   - Driver `@libsql/client` yang mendukung SQLite file lokal (`data/shoes.db`) dan Turso Cloud (`libsql://`) tanpa ubah kode.
+  - Konfigurasi `drizzle.config.ts` cerdas dengan dukungan native `process.loadEnvFile` (`.env` / `.env.local`) dan deteksi otomatis dialect/driver (`turso` vs `sqlite`).
+  - Skema tabel berhasil di-*push* ke Turso Cloud via `npm run db:push`.
+  - Script diagnostik `npm run db:check` (`scripts/test-db-connection.ts`) untuk pengecekan latensi, ping, dan hitung row tabel.
+  - Seeding awal 6 model sepatu ikonik berhasil dimasukkan ke Turso Cloud via `npm run db:seed`.
+- **High-Availability & Fallback Resilience**:
+  - Implementasi dataset statis cadangan (`src/data/fallback-shoes.ts`) pada `shoe.service.ts` agar aplikasi tetap menyajikan katalog secara elegan bila koneksi internet/cloud database terputus.
 - **Tool Scraper RunRepeat**: 
   - Script CLI `scripts/scrape-runrepeat.ts` untuk mengambil spesifikasi lab (berat gram, drop mm, tebal stack, busa, pelat) dan review pros/cons langsung dari RunRepeat.
   - Validasi ketat runtime menggunakan Zod (`src/schemas/shoe.schema.ts`).
-  - Script seeding awal `scripts/seed-initial.ts` dengan 6 model sepatu ikonik (*Asics Novablast 4*, *Nike Pegasus 41*, *Saucony Endorphin Speed 4*, *Nike Vaporfly 3*, *Asics Gel-Nimbus 26*, *Hoka Speedgoat 5*).
 - **REST API Layer**:
   - `GET /api/shoes`: Mengambil daftar sepatu dengan parameter pencarian dan filter kategori rotasi.
   - `GET /api/shoes/:id`: Mengambil detail spesifikasi lab sepatu berdasarkan slug.
@@ -25,8 +30,8 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
   - Filter kategori rotasi scrollable (Daily Trainer, Max Cushion, Tempo, Race Day, Trail).
   - Modal lembar bawah (*bottom sheet*) untuk spesifikasi lab mendalam.
 - **Dokumentasi Lengkap**:
-  - `README.md`: Panduan pengguna dan developer.
-  - `scripts/README.md`: Cara kerja scraper dan konversi metrik lab.
+  - `README.md`: Panduan pengguna dan developer lengkap dengan alur Turso & SQLite.
+  - `scripts/README.md`: Dokumentasi command `db:check`, `db:seed`, dan scraper lab.
   - `docs/ARCHITECTURE.md`: Diagram alur sistem dan komunikasi antar teknologi.
 
 ---

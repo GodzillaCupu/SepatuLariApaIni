@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { shoes, ShoeRecord } from "@/db/schema";
 import { eq, like, or, and, desc } from "drizzle-orm";
 import { RunningShoe, ShoeCategory, CategoryMeta } from "@/types";
+import { FALLBACK_SHOES } from "@/data/fallback-shoes";
 
 export const CATEGORIES_META: Record<ShoeCategory, CategoryMeta> = {
   daily_trainer: {
@@ -105,39 +106,66 @@ export async function getAllShoes(filter?: {
   search?: string;
   limit?: number;
 }): Promise<RunningShoe[]> {
-  const conditions = [];
+  try {
+    const conditions = [];
 
-  if (filter?.category) {
-    conditions.push(eq(shoes.category, filter.category));
-  }
-  if (filter?.brand) {
-    conditions.push(eq(shoes.brand, filter.brand));
-  }
-  if (filter?.search) {
-    const q = `%${filter.search}%`;
-    conditions.push(or(like(shoes.brand, q), like(shoes.model, q)));
+    if (filter?.category) {
+      conditions.push(eq(shoes.category, filter.category));
+    }
+    if (filter?.brand) {
+      conditions.push(eq(shoes.brand, filter.brand));
+    }
+    if (filter?.search) {
+      const q = `%${filter.search}%`;
+      conditions.push(or(like(shoes.brand, q), like(shoes.model, q)));
+    }
+
+    const query = db
+      .select()
+      .from(shoes)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(shoes.releaseYear));
+
+    if (filter?.limit) {
+      query.limit(filter.limit);
+    }
+
+    const rows = await query;
+    if (rows && rows.length > 0) {
+      return rows.map(formatShoeRecord);
+    }
+  } catch (err) {
+    console.warn("[ShoeService] Database unavailable, falling back to static dataset:", err);
   }
 
-  const query = db
-    .select()
-    .from(shoes)
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .orderBy(desc(shoes.releaseYear));
-
-  if (filter?.limit) {
-    query.limit(filter.limit);
-  }
-
-  const rows = await query;
-  return rows.map(formatShoeRecord);
+  // Fallback to static catalog if DB is offline or not yet migrated
+  return FALLBACK_SHOES.filter((shoe) => {
+    if (filter?.category && shoe.category !== filter.category) return false;
+    if (filter?.brand && shoe.brand.toLowerCase() !== filter.brand.toLowerCase()) return false;
+    if (filter?.search) {
+      const q = filter.search.toLowerCase();
+      if (!shoe.brand.toLowerCase().includes(q) && !shoe.model.toLowerCase().includes(q)) {
+        return false;
+      }
+    }
+    return true;
+  }).slice(0, filter?.limit || undefined);
 }
 
 export async function getShoeById(id: string): Promise<RunningShoe | null> {
-  const rows = await db.select().from(shoes).where(eq(shoes.id, id)).limit(1);
-  if (!rows || rows.length === 0) return null;
-  return formatShoeRecord(rows[0]);
+  try {
+    const rows = await db.select().from(shoes).where(eq(shoes.id, id)).limit(1);
+    if (rows && rows.length > 0) {
+      return formatShoeRecord(rows[0]);
+    }
+  } catch (err) {
+    console.warn("[ShoeService] Database unavailable for getShoeById:", err);
+  }
+
+  return FALLBACK_SHOES.find((s) => s.id === id) || null;
 }
 
 export async function getCategoriesSummary() {
   return Object.values(CATEGORIES_META);
 }
+

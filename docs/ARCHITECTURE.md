@@ -74,7 +74,8 @@ SepatuLariApaIni/
 ├── scripts/                  # Tool CLI Otomasi
 │   ├── scrape-runrepeat.ts   # Scraper halaman lab RunRepeat ke DB
 │   ├── seed-initial.ts       # Seeder 6 sepatu ikonik awal
-│   └── README.md             # Panduan pengoperasian scraper
+│   ├── test-db-connection.ts # Script diagnostik koneksi & hitung tabel DB
+│   └── README.md             # Panduan pengoperasian scraper & DB scripts
 │
 ├── docs/                     # Dokumentasi Arsitektur & Rencana
 │   └── ARCHITECTURE.md       # (Dokumen ini)
@@ -82,6 +83,9 @@ SepatuLariApaIni/
 └── src/
     ├── types/                # Kontrak Tipe Data TypeScript
     │   └── index.ts          # RunningShoe, ShoeCategory, Specs, Verdict
+    │
+    ├── data/                 # Static Fallback Dataset
+    │   └── fallback-shoes.ts # Dataset cadangan jika DB offline/unreachable
     │
     ├── schemas/              # Validasi Runtime (Zod)
     │   └── shoe.schema.ts    # Validasi skema sebelum masuk DB / API
@@ -91,7 +95,7 @@ SepatuLariApaIni/
     │   └── index.ts          # Inisialisasi client @libsql universal
     │
     ├── services/             # Lapisan Bisnis & Database Query
-    │   └── shoe.service.ts   # getShoes(), getShoeById(), metadata kategori
+    │   └── shoe.service.ts   # getShoes(), getShoeById(), fallback logic
     │
     ├── components/           # Komponen UI React (Client Components)
     │   ├── Navbar.tsx        # Header dengan indikator status online/offline
@@ -128,12 +132,14 @@ SepatuLariApaIni/
   db.select().from(shoes).where(and(...conditions)).orderBy(desc(shoes.releaseYear));
   ```
 - Drizzle menjamin *type safety* penuh: jika nama kolom tabel diubah di `schema.ts`, TypeScript langsung mendeteksi error pada saat build sebelum aplikasi dijalankan.
+- **Resilience Fallback**: Jika database belum dimigrasikan atau terjadi gangguan jaringan sementara ke Turso Cloud, `shoe.service.ts` menangkap error dan mengalihkan pembacaan ke `FALLBACK_SHOES` (`src/data/fallback-shoes.ts`), menjamin UI tidak pernah crash (*zero downtime*).
 
-### C. Driver Database Universal (`@libsql/client`)
+### C. Driver Database Universal (`@libsql/client`) & Turso Cloud
 - Koneksi diatur di `src/db/index.ts`.
-- Pengemudi membaca `process.env.TURSO_DATABASE_URL`:
-  - **Di Vercel (Production)**: URL berformat `libsql://...`, driver membuka koneksi HTTPS/WebSocket aman ke Turso Cloud.
-  - **Di Laptop (Development)**: URL berformat `file:./data/shoes.db`, driver secara otomatis melakukan I/O langsung ke file lokal tanpa memerlukan internet.
+- Driver membaca konfigurasi dari `.env` / `.env.local`:
+  - **Turso Cloud (Remote)**: URL berformat `libsql://...` dipasangkan dengan `TURSO_AUTH_TOKEN`. Driver membuka koneksi HTTPS/WebSocket aman ke Turso Cloud di AWS edge.
+  - **SQLite Lokal (Offline)**: URL berformat `file:./data/shoes.db`, driver secara otomatis melakukan I/O langsung ke file lokal tanpa memerlukan internet.
+- Skema tabel disinkronkan ke cloud atau lokal menggunakan `npm run db:push`, dan diverifikasi statusnya via `npm run db:check`.
 
 ### D. PWA & Service Worker (`@ducanh2912/next-pwa`)
 - Konfigurasi diatur dalam `next.config.mjs`.
@@ -142,3 +148,4 @@ SepatuLariApaIni/
   - File HTML, JS, CSS, dan icon disimpan di **Cache API**.
   - Respons API `/api/shoes` disimpan dengan strategi *stale-while-revalidate*.
   - Ketika browser kehilangan koneksi internet (offline), Service Worker melayani data dari cache, dan komponen `Navbar.tsx` secara otomatis menampilkan lencana **"Offline Mode"**.
+

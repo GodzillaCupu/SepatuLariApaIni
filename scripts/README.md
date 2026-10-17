@@ -1,26 +1,41 @@
-# Dokumentasi Tool Scraper RunRepeat (`scripts/scrape-runrepeat.ts`)
+# Dokumentasi Script Database & Tool Scraper (`scripts/`)
 
-Folder ini berisi tool otomasi pengambilan data spesifikasi lab dari situs **RunRepeat** dan konversi langsung ke database **SQLite / Turso** milik LariYuk.
+Folder ini berisi tool otomasi dan utilitas database untuk pengelolaan data spesifikasi lab **LariYuk (SepatuLariApaIni)**, baik untuk database **SQLite lokal** maupun **Turso Cloud**.
 
 ---
 
-## 1. Cara Menggunakan
+## 1. Daftar Script & Cara Penggunaan
 
-### A. Scrape Satu Sepatu Tertentu
-Gunakan perintah `npm run scrape` diikuti URL halaman review RunRepeat:
+### A. Uji Koneksi Database (`scripts/test-db-connection.ts`)
+Digunakan untuk memverifikasi apakah aplikasi lokal dapat menjangkau database yang dikonfigurasikan di `.env` (Turso Cloud atau file SQLite lokal):
+
+```bash
+npm run db:check
+```
+*Output menampilkan:*
+- Tipe koneksi (`Turso Cloud (Remote)` atau `Local SQLite File`)
+- Endpoint URL & keberadaan Auth Token
+- Status ping SQL
+- Jumlah baris data yang ada pada tabel `shoes`
+
+### B. Seeding Sepatu Awal (`scripts/seed-initial.ts`)
+Mengisi database dengan 6 sepatu lab teruji secara instan:
+
+```bash
+npm run db:seed
+# Atau: npx tsx scripts/seed-initial.ts
+```
+Script akan otomatis mendeteksi konfigurasi di `.env` / `.env.local` dan menyuntikkan data ke target yang aktif.
+
+### C. Scraper RunRepeat (`scripts/scrape-runrepeat.ts`)
+Mengambil data spesifikasi lab dari halaman review RunRepeat dan menyimpannya langsung ke database:
 
 ```bash
 # Contoh: Scrape Asics Novablast 4
 npm run scrape https://runrepeat.com/asics-novablast-4
 
-# Atau jalankan via npx tsx langsung:
+# Atau jalankan via tsx langsung:
 npx tsx scripts/scrape-runrepeat.ts https://runrepeat.com/nike-pegasus-41
-```
-
-### B. Seeding Sepatu Awal (Batch Data)
-Jika ingin mengisi database dengan 6 sepatu ikonik secara instan tanpa fetch internet:
-```bash
-npx tsx scripts/seed-initial.ts
 ```
 
 ---

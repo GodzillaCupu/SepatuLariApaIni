@@ -2,11 +2,21 @@ import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { shoes, NewShoeRecord } from "../src/db/schema";
 
+try {
+  process.loadEnvFile(".env");
+} catch {}
+try {
+  process.loadEnvFile(".env.local");
+} catch {}
+
 const dbUrl = process.env.TURSO_DATABASE_URL || "file:./data/shoes.db";
 const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
 
+console.log(`[Seed] Target Database: ${dbUrl.startsWith("libsql:") ? "Turso Cloud (" + dbUrl + ")" : dbUrl}`);
+
 const client = createClient({ url: dbUrl, authToken });
 const db = drizzle(client);
+
 
 const initialShoes: NewShoeRecord[] = [
   {

@@ -8,11 +8,13 @@
 
 Fitur **AI Vision Scan DITANGGUHKAN** sementara hingga ada instruksi eksplisit untuk melanjutkan.
 
-Fokus pengembangan aktif:
-1. **Database & Data Structure**: Katalog berbasis `data/shoes.json` tervalidasi Zod & TypeScript.
-2. **REST API**: Endpoint native Next.js App Router untuk pencarian, filter, dan detail sepatu.
-3. **PWA Integration**: Dukungan offline penuh, web app manifest, service worker.
-4. **Frontend UI**: Katalog mobile-first, filter rotasi sepatu, pencarian real-time, dan kartu detail spesifikasi lab.
+Status Implementasi:
+1. [x] **Database & ORM**: Drizzle ORM dengan LibSQL Client terintegrasi ganda (Turso Cloud untuk cloud/prod & SQLite file untuk offline). Skema tabel `shoes` ter-push ke Turso dan ter-seed 6 sepatu.
+2. [x] **Resilience Layer**: Fallback dataset statis (`src/data/fallback-shoes.ts`) menjamin zero-downtime jika DB unreachable.
+3. [x] **REST API**: Endpoint Next.js App Router (`/api/shoes`, `/api/shoes/[id]`, `/api/shoes/categories`) aktif.
+4. [x] **PWA Integration**: Service Worker (`@ducanh2912/next-pwa`), manifest, offline banner terpasang.
+5. [x] **Frontend UI**: Katalog mobile-first, filter rotasi, real-time search, bottom sheet modal lab specs.
+6. [ ] **Pengayaan Data**: Batch scraping 30+ sepatu populer tambahan.
 
 ---
 

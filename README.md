@@ -60,22 +60,47 @@ Pasar sepatu lari saat ini dibanjiri oleh puluhan jenis busa (*ZoomX, FF Blast+,
 ## 4. Menjalankan di Lokal (Developer Guide)
 
 ### Prasyarat
-- Node.js versi 18 ke atas (direkomendasikan v20+)
+- Node.js versi 20 ke atas (disarankan v20+ untuk dukungan `process.loadEnvFile`)
 - npm / pnpm / bun
 
 ### Langkah Instalasi
 ```bash
-# 1. Clone repository
-git clone https://github.com/GodzillaCupu/SepatuLariApaIni.git
+# 1. Masuk ke direktori aplikasi
 cd SepatuLariApaIni
 
 # 2. Install dependensi
 npm install
 
-# 3. Jalankan seeding database lokal (SQLite)
-npx tsx scripts/seed-initial.ts
+# 3. Konfigurasi Environment (.env)
+# Jika belum ada file .env, salin dari template:
+cp .env.example .env
+```
 
-# 4. Jalankan server lokal
+Pilih salah satu konfigurasi di dalam file `.env`:
+
+- **Opsi A: Turso Cloud Database (Direkomendasikan / Production-parity)**
+  ```env
+  TURSO_DATABASE_URL=libsql://database-sepatulariapaini-[username].turso.io
+  TURSO_AUTH_TOKEN=eyJhbGciOi...
+  ```
+- **Opsi B: SQLite File Lokal (Offline / Standalone)**
+  ```env
+  TURSO_DATABASE_URL=file:./data/shoes.db
+  TURSO_AUTH_TOKEN=
+  ```
+
+### Manajemen & Verifikasi Database
+```bash
+# 1. Cek status koneksi database
+npm run db:check
+
+# 2. Sinkronisasi skema tabel ke database (Turso / SQLite)
+npm run db:push
+
+# 3. Masukkan data katalog awal (6 sepatu lab teruji)
+npm run db:seed
+
+# 4. Jalankan server pengembangan lokal
 npm run dev
 ```
 
@@ -85,11 +110,10 @@ Buka [http://localhost:3000](http://localhost:3000) di browser Anda.
 
 ## 5. Deployment ke Vercel (Gratis)
 
-1. Fork atau push repositori ini ke akun GitHub Anda.
-2. Buka [Vercel](https://vercel.com/new) dan import repositori `SepatuLariApaIni`.
-3. (Opsional untuk database cloud): Buat database gratis di [Turso](https://turso.tech), lalu tambahkan Environment Variables di Vercel:
-   ```env
-   TURSO_DATABASE_URL=libsql://database_sepatulariapaini-[username].turso.io
-   TURSO_AUTH_TOKEN=eyJhbGciOi...
-   ```
-4. Klik **Deploy**. Selesai.
+1. Push atau fork repositori ini ke akun GitHub Anda.
+2. Buka dashboard [Vercel](https://vercel.com/new) dan import proyek `SepatuLariApaIni`.
+3. Tambahkan **Environment Variables** di Vercel Settings:
+   - `TURSO_DATABASE_URL`: URL database Turso Anda (`libsql://...`)
+   - `TURSO_AUTH_TOKEN`: Token autentikasi Turso Anda
+4. Klik **Deploy**. Selesai. PWA dan REST API akan otomatis membaca data langsung dari Turso Cloud.
+
