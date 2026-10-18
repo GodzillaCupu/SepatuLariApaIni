@@ -22,15 +22,15 @@ import * as path from "path";
 import * as fs from "fs";
 import { scrapeRunRepeatShoe } from "./scrape-runrepeat";
 
+import { ShoeCategory } from "../src/types";
+
 // ─────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────
 
-type Category = "daily_trainer" | "max_cushion" | "tempo_speed" | "race_day" | "trail";
-
 interface UrlEntry {
   url: string;
-  categoryOverride?: Category;
+  categoryOverride?: ShoeCategory;
 }
 
 interface JobResult {

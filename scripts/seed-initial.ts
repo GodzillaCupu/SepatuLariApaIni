@@ -17,7 +17,6 @@ console.log(`[Seed] Target Database: ${dbUrl.startsWith("libsql:") ? "Turso Clou
 const client = createClient({ url: dbUrl, authToken });
 const db = drizzle(client);
 
-
 const initialShoes: NewShoeRecord[] = [
   {
     id: "asics-novablast-4",
@@ -25,6 +24,8 @@ const initialShoes: NewShoeRecord[] = [
     model: "Novablast 4",
     releaseYear: 2024,
     category: "daily_trainer",
+    subCategory: "long_run",
+    terrain: "road",
     primaryUse: "Daily Miles, Recovery, Long Runs",
     secondaryUse: "Tempo Runs",
     targetPaceRange: "5:00 - 6:30 min/km",
@@ -57,6 +58,8 @@ const initialShoes: NewShoeRecord[] = [
     model: "Pegasus 41",
     releaseYear: 2024,
     category: "daily_trainer",
+    subCategory: "daily_easy",
+    terrain: "road",
     primaryUse: "Daily Training, Easy Runs",
     secondaryUse: "Short Intervals",
     targetPaceRange: "5:15 - 7:00 min/km",
@@ -88,7 +91,9 @@ const initialShoes: NewShoeRecord[] = [
     brand: "Saucony",
     model: "Endorphin Speed 4",
     releaseYear: 2024,
-    category: "tempo_speed",
+    category: "super_trainer",
+    subCategory: "speed_tempo",
+    terrain: "road",
     primaryUse: "Tempo Runs, Intervals, Half Marathon",
     secondaryUse: "Daily Miles",
     targetPaceRange: "4:15 - 5:30 min/km",
@@ -102,7 +107,7 @@ const initialShoes: NewShoeRecord[] = [
     plateType: "Nylon",
     cushionFeel: "Balanced",
     verdictSummary:
-      "Raja sepatu tempo. Plat nilon fleksibel dengan busa super PWRRUN PB menghadirkan kecepatan tanpa mengorbankan kenyamanan harian.",
+      "Raja sepatu tempo & super trainer. Plat nilon fleksibel dengan busa super PWRRUN PB menghadirkan kecepatan tanpa mengorbankan kenyamanan harian.",
     pros: JSON.stringify([
       "Pelat nilon berwing memberi dorongan tanpa kaku",
       "Busa PWRRUN PB sangat ringan dan bertenaga",
@@ -120,7 +125,9 @@ const initialShoes: NewShoeRecord[] = [
     brand: "Nike",
     model: "Vaporfly 3",
     releaseYear: 2023,
-    category: "race_day",
+    category: "super_shoes",
+    subCategory: "race_long",
+    terrain: "road",
     primaryUse: "10K to Marathon Race Day",
     secondaryUse: "Time Trial",
     targetPaceRange: "3:30 - 4:45 min/km",
@@ -153,6 +160,8 @@ const initialShoes: NewShoeRecord[] = [
     model: "Gel-Nimbus 26",
     releaseYear: 2024,
     category: "max_cushion",
+    subCategory: "recovery_run",
+    terrain: "road",
     primaryUse: "Recovery Run, Zone 2 Easy, Ultra Long Run",
     secondaryUse: "Walking & Standing",
     targetPaceRange: "6:00 - 8:00 min/km",
@@ -184,7 +193,9 @@ const initialShoes: NewShoeRecord[] = [
     brand: "Hoka",
     model: "Speedgoat 5",
     releaseYear: 2023,
-    category: "trail",
+    category: "trail_daily",
+    subCategory: "trail_race_long",
+    terrain: "multi_ground",
     primaryUse: "Technical Trail, Ultra Trail",
     secondaryUse: "Mountain Hiking",
     targetPaceRange: "5:30 - 8:30 min/km",
@@ -224,6 +235,8 @@ async function seed() {
       model TEXT NOT NULL,
       release_year INTEGER NOT NULL,
       category TEXT NOT NULL,
+      sub_category TEXT,
+      terrain TEXT,
       primary_use TEXT NOT NULL,
       secondary_use TEXT,
       target_pace_range TEXT NOT NULL,

@@ -40,7 +40,9 @@ export default function HomePage() {
   // Filter client-side untuk pencarian instan 0ms
   const filteredShoes = useMemo(() => {
     return shoes.filter((s) => {
-      const matchCategory = selectedCategory ? s.category === selectedCategory : true;
+      const matchCategory = selectedCategory
+        ? s.category === selectedCategory || s.subCategory === selectedCategory
+        : true;
       const q = searchQuery.toLowerCase().trim();
       const matchSearch = q
         ? s.brand.toLowerCase().includes(q) ||

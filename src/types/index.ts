@@ -1,8 +1,38 @@
 export type ShoeCategory =
+  // Road Categories
+  | "super_shoes"
+  | "super_trainer"
+  | "race_short"
+  | "race_long"
+  | "speed_tempo"
   | "daily_trainer"
+  | "daily_easy"
+  | "long_run"
   | "max_cushion"
-  | "tempo_speed"
+  | "recovery_run"
+  | "stability"
+  | "minimalist"
+  // Trail Categories (By Session)
+  | "trail_super_shoes"
+  | "trail_race_short"
+  | "trail_race_long"
+  | "trail_speed"
+  | "trail_daily"
+  | "trail_long_run"
+  | "trail_recovery"
+  // Trail Categories (By Terrain)
+  | "soft_ground"
+  | "firm_ground"
+  | "multi_ground"
+  | "technical_trail"
+  | "mountain_alpine"
+  | "desert_dry"
+  // Specialty
+  | "track_spikes"
+  | "cross_training"
+  // Legacy aliases for backward compatibility
   | "race_day"
+  | "tempo_speed"
   | "trail";
 
 export type RunnerType = "Neutral" | "Mild Stability" | "Stability";
@@ -32,6 +62,8 @@ export interface RunningShoe {
   model: string;
   releaseYear: number;
   category: ShoeCategory;
+  subCategory?: string | null;
+  terrain?: string | null;
   primaryUse: string;
   secondaryUse?: string | null;
   targetPaceRange: string;

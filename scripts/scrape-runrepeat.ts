@@ -17,9 +17,11 @@ const authToken = process.env.TURSO_AUTH_TOKEN || undefined;
 const client = createClient({ url: dbUrl, authToken });
 const db = drizzle(client);
 
+import { ShoeCategory } from "../src/types";
+
 interface ScrapedData {
   url: string;
-  categoryOverride?: "daily_trainer" | "max_cushion" | "tempo_speed" | "race_day" | "trail";
+  categoryOverride?: ShoeCategory;
 }
 
 export async function scrapeRunRepeatShoe({ url, categoryOverride }: ScrapedData) {
@@ -117,42 +119,83 @@ export async function scrapeRunRepeatShoe({ url, categoryOverride }: ScrapedData
     $("picture img").first().attr("src") ||
     null;
 
-  // Deteksi kategori otomatis dari kata kunci
-  let category: "daily_trainer" | "max_cushion" | "tempo_speed" | "race_day" | "trail" =
-    categoryOverride || "daily_trainer";
+  // Deteksi kategori otomatis dari kata kunci & spesifikasi
+  let category: ShoeCategory = categoryOverride || "daily_trainer";
+  let subCategory: string | undefined = undefined;
+  let terrain: string | undefined = "road";
 
   const fullText = (html + " " + title).toLowerCase();
+  const hasCarbon = fullText.includes("carbon plate") || fullText.includes("carbon fiber");
+  const hasPlate = hasCarbon || fullText.includes("nylon plate") || fullText.includes("tpu plate") || fullText.includes("plate");
+  const isTrail = fullText.includes("trail") || fullText.includes("vibram") || fullText.includes("lugs");
+
   if (!categoryOverride) {
-    if (fullText.includes("trail") || fullText.includes("vibram") || fullText.includes("lugs")) {
-      category = "trail";
-    } else if (fullText.includes("carbon plate") || fullText.includes("marathon race") || fullText.includes("super shoe")) {
-      category = "race_day";
+    if (isTrail) {
+      terrain = "multi_ground";
+      if (hasCarbon) {
+        category = "trail_super_shoes";
+      } else if (fullText.includes("ultra") || heelStackMm >= 35) {
+        category = "trail_daily";
+        subCategory = "trail_race_long";
+      } else {
+        category = "trail_daily";
+      }
+    } else if (hasCarbon || fullText.includes("super shoe")) {
+      category = "super_shoes";
+      subCategory = "race_long";
+    } else if (fullText.includes("super trainer") || (hasPlate && fullText.includes("peba"))) {
+      category = "super_trainer";
+      subCategory = "speed_tempo";
     } else if (fullText.includes("tempo") || fullText.includes("speedwork") || fullText.includes("interval")) {
-      category = "tempo_speed";
-    } else if (fullText.includes("max cushion") || heelStackMm >= 40) {
+      category = "speed_tempo";
+    } else if (fullText.includes("max cushion") || heelStackMm >= 38) {
       category = "max_cushion";
+      subCategory = "recovery_run";
+    } else if (fullText.includes("stability") || fullText.includes("guiderails") || fullText.includes("overpronation")) {
+      category = "stability";
+    } else {
+      category = "daily_trainer";
+      subCategory = "daily_easy";
     }
   }
 
   // 6. Data Objek Sesuai Zod Schema
+  const isRace = category === "super_shoes" || category === "race_long" || category === "race_short";
+  const isSpeed = category === "super_trainer" || category === "speed_tempo";
+  const isTrailShoe = isTrail || category.startsWith("trail_");
+
   const shoeData = {
     id: slug,
     brand,
     model,
     releaseYear: 2024,
     category,
-    primaryUse: category === "daily_trainer" ? "Daily Miles, Easy Runs" : category === "race_day" ? "Marathon, Half-Marathon Race" : "Training & Runs",
+    subCategory,
+    terrain: isTrailShoe ? terrain : "road",
+    primaryUse: isRace
+      ? "Marathon, Half-Marathon Race"
+      : isSpeed
+      ? "Tempo Runs, Speed Intervals"
+      : isTrailShoe
+      ? "Trail Running & Outdoor"
+      : category === "max_cushion"
+      ? "Recovery Runs & High Mileage"
+      : "Daily Miles, Easy Runs",
     secondaryUse: "Long Runs",
-    targetPaceRange: category === "race_day" ? "3:30 - 4:45 min/km" : category === "tempo_speed" ? "4:15 - 5:15 min/km" : "5:30 - 7:00 min/km",
-    runnerType: "Neutral" as const,
-    surface: category === "trail" ? ("Trail" as const) : ("Road" as const),
+    targetPaceRange: isRace
+      ? "3:30 - 4:45 min/km"
+      : isSpeed
+      ? "4:15 - 5:30 min/km"
+      : "5:30 - 7:00 min/km",
+    runnerType: (category === "stability" ? "Stability" : "Neutral") as any,
+    surface: isTrailShoe ? ("Trail" as const) : ("Road" as const),
     specs: {
       weightGrams,
       dropMm,
       heelStackMm,
       forefootStackMm,
       foamType: "Standard Performance Foam",
-      plateType: category === "race_day" ? ("Carbon Fiber" as const) : ("None" as const),
+      plateType: hasCarbon ? ("Carbon Fiber" as const) : hasPlate ? ("Nylon" as const) : ("None" as const),
       cushionFeel: heelStackMm > 38 ? ("Plush" as const) : ("Balanced" as const),
     },
     verdict: {
@@ -174,6 +217,8 @@ export async function scrapeRunRepeatShoe({ url, categoryOverride }: ScrapedData
     model: validated.model,
     releaseYear: validated.releaseYear,
     category: validated.category,
+    subCategory: validated.subCategory,
+    terrain: validated.terrain,
     primaryUse: validated.primaryUse,
     secondaryUse: validated.secondaryUse,
     targetPaceRange: validated.targetPaceRange,

@@ -5,7 +5,9 @@ export const shoes = sqliteTable("shoes", {
   brand: text("brand").notNull(),
   model: text("model").notNull(),
   releaseYear: integer("release_year").notNull(),
-  category: text("category").notNull(), // daily_trainer, max_cushion, tempo_speed, race_day, trail
+  category: text("category").notNull(), // standard category slug
+  subCategory: text("sub_category"),
+  terrain: text("terrain"),
   primaryUse: text("primary_use").notNull(),
   secondaryUse: text("secondary_use"),
   targetPaceRange: text("target_pace_range").notNull(), // "5:00 - 6:30 min/km"

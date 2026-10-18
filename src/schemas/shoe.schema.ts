@@ -1,10 +1,40 @@
 import { z } from "zod";
 
 export const ShoeCategoryEnum = z.enum([
+  // Road
+  "super_shoes",
+  "super_trainer",
+  "race_short",
+  "race_long",
+  "speed_tempo",
   "daily_trainer",
+  "daily_easy",
+  "long_run",
   "max_cushion",
-  "tempo_speed",
+  "recovery_run",
+  "stability",
+  "minimalist",
+  // Trail by Session
+  "trail_super_shoes",
+  "trail_race_short",
+  "trail_race_long",
+  "trail_speed",
+  "trail_daily",
+  "trail_long_run",
+  "trail_recovery",
+  // Trail by Terrain
+  "soft_ground",
+  "firm_ground",
+  "multi_ground",
+  "technical_trail",
+  "mountain_alpine",
+  "desert_dry",
+  // Specialty
+  "track_spikes",
+  "cross_training",
+  // Legacy Aliases
   "race_day",
+  "tempo_speed",
   "trail",
 ]);
 
@@ -35,6 +65,8 @@ export const RunningShoeSchema = z.object({
   model: z.string().min(1),
   releaseYear: z.number().int().min(2015).max(2030),
   category: ShoeCategoryEnum,
+  subCategory: z.string().nullable().optional(),
+  terrain: z.string().nullable().optional(),
   primaryUse: z.string().min(3),
   secondaryUse: z.string().nullable().optional(),
   targetPaceRange: z.string().min(3),

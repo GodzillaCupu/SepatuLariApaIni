@@ -10,11 +10,14 @@ interface Props {
 
 const CATEGORIES: { key: string; label: string; emoji: string }[] = [
   { key: "", label: "Semua", emoji: "👟" },
-  { key: "daily_trainer", label: "Daily Trainer", emoji: "🟢" },
-  { key: "max_cushion", label: "Max Cushion", emoji: "🟡" },
-  { key: "tempo_speed", label: "Tempo / Speed", emoji: "🟠" },
-  { key: "race_day", label: "Race Day", emoji: "🔴" },
-  { key: "trail", label: "Trail Running", emoji: "🟣" },
+  { key: "daily_trainer", label: "Daily / Easy", emoji: "🟢" },
+  { key: "super_shoes", label: "Super Shoes", emoji: "🏆" },
+  { key: "super_trainer", label: "Super Trainer", emoji: "⚡" },
+  { key: "speed_tempo", label: "Speed / Tempo", emoji: "⏱️" },
+  { key: "max_cushion", label: "Max Cushion", emoji: "🛡️" },
+  { key: "stability", label: "Stability", emoji: "⚖️" },
+  { key: "trail_daily", label: "Trail Daily", emoji: "🌲" },
+  { key: "trail_race_long", label: "Trail Ultra", emoji: "⛰️" },
 ];
 
 export function RotationFilter({ selected, onSelect }: Props) {

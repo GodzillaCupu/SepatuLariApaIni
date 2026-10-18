@@ -29,6 +29,8 @@ function formatShoeRecord(record: ShoeRecord): RunningShoe {
     model: record.model,
     releaseYear: record.releaseYear,
     category: record.category as ShoeCategory,
+    subCategory: record.subCategory,
+    terrain: record.terrain,
     primaryUse: record.primaryUse,
     secondaryUse: record.secondaryUse,
     targetPaceRange: record.targetPaceRange,
@@ -65,7 +67,12 @@ export async function getAllShoes(filter?: {
     const conditions = [];
 
     if (filter?.category) {
-      conditions.push(eq(shoes.category, filter.category));
+      conditions.push(
+        or(
+          eq(shoes.category, filter.category),
+          eq(shoes.subCategory, filter.category)
+        )
+      );
     }
     if (filter?.brand) {
       conditions.push(eq(shoes.brand, filter.brand));
@@ -95,7 +102,13 @@ export async function getAllShoes(filter?: {
 
   // Fallback to static catalog if DB is offline or not yet migrated
   return FALLBACK_SHOES.filter((shoe) => {
-    if (filter?.category && shoe.category !== filter.category) return false;
+    if (
+      filter?.category &&
+      shoe.category !== filter.category &&
+      shoe.subCategory !== filter.category
+    ) {
+      return false;
+    }
     if (filter?.brand && shoe.brand.toLowerCase() !== filter.brand.toLowerCase()) return false;
     if (filter?.search) {
       const q = filter.search.toLowerCase();
