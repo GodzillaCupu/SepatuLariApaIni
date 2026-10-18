@@ -38,6 +38,39 @@ npm run scrape https://runrepeat.com/asics-novablast-4
 npx tsx scripts/scrape-runrepeat.ts https://runrepeat.com/nike-pegasus-41
 ```
 
+### D. Bulk Scraper — Banyak URL Sekaligus (`scripts/scrape-bulk.ts`)
+
+Menjalankan scraping banyak URL secara otomatis dengan kontrol concurrency dan delay untuk menghindari pemblokiran:
+
+```bash
+# 1. Dari file urls.json (cara paling praktis):
+npm run scrape:bulk:file
+
+# 2. Dari argumen CLI langsung:
+npx tsx scripts/scrape-bulk.ts https://runrepeat.com/asics-novablast-4 https://runrepeat.com/nike-pegasus-41
+
+# 3. Dengan opsi custom:
+npx tsx scripts/scrape-bulk.ts --file scripts/urls.json --concurrency 3 --delay 5000
+
+# 4. Dry run (preview URL tanpa scraping):
+npx tsx scripts/scrape-bulk.ts --file scripts/urls.json --dry-run
+```
+
+**Format `urls.json`** — mendukung dua format:
+```json
+[
+  "https://runrepeat.com/asics-novablast-4",
+  { "url": "https://runrepeat.com/adidas-adizero-adios-pro-4", "categoryOverride": "race_day" }
+]
+```
+
+| Opsi | Default | Keterangan |
+|---|---|---|
+| `--file <path>` | — | Path ke file JSON berisi daftar URL |
+| `--concurrency <n>` | `2` | Jumlah request paralel |
+| `--delay <ms>` | `3000` | Jeda antar request (ms) |
+| `--dry-run` | off | Preview daftar URL tanpa scraping |
+
 ---
 
 ## 2. Cara Membaca & Memahami Script (`scripts/scrape-runrepeat.ts`)
