@@ -66,13 +66,18 @@ function classifyShoe(params: {
     params.fullText
   ).toLowerCase();
 
-  const isTrail =
-    corpus.includes("trail") ||
-    corpus.includes("vibram") ||
-    corpus.includes("megagrip") ||
-    corpus.includes("lugs") ||
-    corpus.includes("off-road") ||
-    corpus.includes("dirt road");
+  const isExplicitTrail =
+    params.fullText.includes("/catalog/trail") ||
+    params.fullText.includes('class="trail') ||
+    /"Terrain","terrain"[^}]+"Trail"/i.test(params.fullText) ||
+    corpus.includes("trail running shoe") ||
+    corpus.includes("trail shoe");
+  const isExplicitRoad =
+    params.fullText.includes("/catalog/road") ||
+    /"Terrain","terrain"[^}]+"Road"/i.test(params.fullText) ||
+    corpus.includes("road running shoe");
+
+  const isTrail = isExplicitTrail && !isExplicitRoad;
 
   const scores: Record<ShoeCategory, number> = {
     super_shoes: 0,
@@ -332,20 +337,29 @@ export async function scrapeRunRepeatShoe({
   categoryOverride,
   subCategoryOverride,
 }: ScrapedData) {
-  console.log(`[Scraper] Mengambil data dari: ${url}`);
+  let response: Response | null = null;
+  let lastError: any = null;
 
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Accept":
-        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
-  });
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      response = await fetch(url, {
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        },
+      });
+      if (response.ok) break;
+    } catch (err) {
+      lastError = err;
+      if (attempt < 3) {
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+      }
+    }
+  }
 
-  if (!response.ok) {
-    throw new Error(`Gagal fetch ${url}. Status: ${response.status} ${response.statusText}`);
+  if (!response || !response.ok) {
+    const statusMsg = response ? `${response.status} ${response.statusText}` : lastError?.message || "Koneksi gagal";
+    throw new Error(`Gagal fetch ${url}. Detail: ${statusMsg}`);
   }
 
   const html = await response.text();
