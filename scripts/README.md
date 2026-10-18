@@ -27,49 +27,50 @@ npm run db:seed
 ```
 Script akan otomatis mendeteksi konfigurasi di `.env` / `.env.local` dan menyuntikkan data ke target yang aktif.
 
-### C. Scraper RunRepeat (`scripts/scrape-runrepeat.ts`)
-Mengambil data spesifikasi lab dari halaman review RunRepeat dan menyimpannya langsung ke database:
+### C. Scraper RunRepeat Per Sepatu (`scripts/scrape-runrepeat.ts`)
+Mengambil data spesifikasi lab dari halaman review RunRepeat, melakukan klasifikasi kategori otomatis (skor potensi terbesar), dan menyimpannya ke database:
 
 ```bash
+# Contoh: Scrape Mizuno Neo Vista
+npx tsx scripts/scrape-runrepeat.ts https://runrepeat.com/mizuno-neo-vista
+
 # Contoh: Scrape Asics Novablast 4
 npm run scrape https://runrepeat.com/asics-novablast-4
-
-# Atau jalankan via tsx langsung:
-npx tsx scripts/scrape-runrepeat.ts https://runrepeat.com/nike-pegasus-41
 ```
 
-### D. Bulk Scraper — Banyak URL Sekaligus (`scripts/scrape-bulk.ts`)
+### D. Bulk & Catalog Scraper (`scripts/scrape-bulk.ts`)
 
-Menjalankan scraping banyak URL secara otomatis dengan kontrol concurrency dan delay untuk menghindari pemblokiran:
+Mendukung pengambilan banyak sepatu sekaligus, baik melalui daftar URL maupun **ekstraksi otomatis dari halaman katalog RunRepeat**:
 
 ```bash
-# 1. Dari file urls.json (cara paling praktis):
+# 1. Scraping Otomatis dari Halaman Katalog RunRepeat (Rekomendasi):
+npx tsx scripts/scrape-bulk.ts --catalog https://runrepeat.com/catalog/running-shoes --limit 10
+
+# Atau katalog trail:
+npx tsx scripts/scrape-bulk.ts --catalog https://runrepeat.com/catalog/trail-running-shoes --limit 15
+
+# Shortcut npm:
+npm run scrape:catalog
+
+# 2. Input beberapa link sepatu langsung di terminal:
+npx tsx scripts/scrape-bulk.ts https://runrepeat.com/mizuno-neo-vista-2 https://runrepeat.com/asics-novablast-4
+
+# 3. Dari file daftar URL (scripts/urls.json):
 npm run scrape:bulk:file
 
-# 2. Dari argumen CLI langsung:
-npx tsx scripts/scrape-bulk.ts https://runrepeat.com/asics-novablast-4 https://runrepeat.com/nike-pegasus-41
-
-# 3. Dengan opsi custom:
-npx tsx scripts/scrape-bulk.ts --file scripts/urls.json --concurrency 3 --delay 5000
-
-# 4. Dry run (preview URL tanpa scraping):
-npx tsx scripts/scrape-bulk.ts --file scripts/urls.json --dry-run
+# 4. Preview link tanpa menyimpan ke database (Dry Run):
+npx tsx scripts/scrape-bulk.ts --catalog https://runrepeat.com/catalog/running-shoes --limit 5 --dry-run
 ```
 
-**Format `urls.json`** — mendukung dua format:
-```json
-[
-  "https://runrepeat.com/asics-novablast-4",
-  { "url": "https://runrepeat.com/adidas-adizero-adios-pro-4", "categoryOverride": "race_day" }
-]
-```
-
+**Daftar Opsi CLI:**
 | Opsi | Default | Keterangan |
 |---|---|---|
+| `--catalog <url>` | — | URL halaman katalog RunRepeat untuk diekstrak otomatis link sepatunya |
+| `--limit <n>` | `20` | Jumlah maksimal sepatu yang diambil dari halaman katalog |
 | `--file <path>` | — | Path ke file JSON berisi daftar URL |
-| `--concurrency <n>` | `2` | Jumlah request paralel |
-| `--delay <ms>` | `3000` | Jeda antar request (ms) |
-| `--dry-run` | off | Preview daftar URL tanpa scraping |
+| `--concurrency <n>` | `2` | Jumlah request scraping paralel bersamaan |
+| `--delay <ms>` | `3000` | Jeda antar request dalam milidetik (hindari rate-limit Cloudflare) |
+| `--dry-run` | off | Hanya tampilkan daftar URL yang ditemukan tanpa scraping ke database |
 
 ---
 
@@ -122,17 +123,24 @@ if (weightText.includes("oz") && !weightText.includes("g")) {
 ```
 *Penjelasan:* RunRepeat menyajikan berat dalam dua format: gram (`260g`) atau ounce (`9.2 oz`). Script menggunakan regex untuk menangkap angka dan mengonversi `1 oz = 28.3495 g` jika teks hanya menyajikan ounce.
 
-#### 3. Logika Penentuan Kategori Rotasi Otomatis
+#### 3. Mesin Klasifikasi Kategori Otomatis (Scoring Engine)
 ```typescript
-if (fullText.includes("trail") || fullText.includes("vibram")) {
-  category = "trail";
-} else if (fullText.includes("carbon plate") || fullText.includes("super shoe")) {
-  category = "race_day";
-} else if (heelStackMm >= 40) {
-  category = "max_cushion";
-}
+const classified = classifyShoe({
+  brand, model, fullText, verdictSummary, pros, cons,
+  heelStackMm, weightGrams, dropMm, hasCarbonPlate, hasNylonPlate, hasPlate
+});
+// Hasil:
+// category: "super_trainer"   (Skor Tertinggi - Potensi Terbesar)
+// subCategory: "max_cushion"   (Skor Kedua Tertinggi)
+// terrain: "road"              (Atau "soft_ground" / "multi_ground" untuk trail)
 ```
-*Penjelasan:* Jika kategori tidak ditentukan secara manual, script memeriksa kata kunci di teks artikel serta ketebalan bantalan tumit (*heel stack*). Bila tumit $\ge 40\text{ mm}$, otomatis diklasifikasikan sebagai *Max Cushion*.
+*Penjelasan:*
+Alih-alih pencocokan statis kaku, fungsi `classifyShoe` menghitung bobot skor relevansi ke seluruh 26 kategori resmi di `docs/running-shoe-categories-guide.md`:
+- Menguji sinyal teks (kata kunci "super trainer", "daily workhorse", "long run", "tempo", dll).
+- Menguji spesifikasi teknis (keberadaan pelat karbon vs nilon, busa super PEBA, ketebalan *heel stack*, bobot sepatu).
+- Kategori dengan bobot tertinggi terpilih sebagai `category` (primer).
+- Kategori tertinggi kedua terpilih sebagai `sub_category` (sekunder).
+- Contoh nyata **Mizuno Neo Vista 2**: memiliki wave plate, busa lembut Enerzy NXT, dan stack tinggi (44.5mm). Hasil penilaian menempatkannya sebagai `super_trainer` (primer) dan `max_cushion` / `long_run` (sekunder).
 
 #### 4. Validasi Ketat Menggunakan Zod
 ```typescript

@@ -1,27 +1,27 @@
 /**
- * scrape-bulk.ts — Bulk scraper untuk banyak URL RunRepeat sekaligus.
+ * scrape-bulk.ts — Bulk & Catalog Scraper untuk RunRepeat
  *
  * Cara pakai:
- *   1. Dari file JSON:
+ *   1. Per sepatu (masukkan link spesifik):
+ *      npx tsx scripts/scrape-bulk.ts https://runrepeat.com/mizuno-neo-vista-2 https://runrepeat.com/asics-novablast-4
+ *
+ *   2. Otomatis dari halaman katalog RunRepeat (dengan limit):
+ *      npx tsx scripts/scrape-bulk.ts --catalog https://runrepeat.com/catalog/running-shoes --limit 10
+ *
+ *   3. Dari file JSON:
  *      npx tsx scripts/scrape-bulk.ts --file scripts/urls.json
  *
- *   2. Dari argumen CLI (pisah spasi):
- *      npx tsx scripts/scrape-bulk.ts https://runrepeat.com/asics-novablast-4 https://runrepeat.com/nike-pegasus-41
- *
- *   3. Dengan kategori override (hanya berlaku jika --file):
- *      Buat urls.json dengan format: [{ "url": "...", "categoryOverride": "race_day" }]
- *
  * Opsi tambahan:
- *   --concurrency <n>   Jumlah request paralel bersamaan (default: 2)
- *   --delay <ms>        Jeda antar setiap request dalam milidetik (default: 3000)
- *   --dry-run           Hanya tampilkan daftar URL tanpa scraping
- *   --file <path>       Path ke file JSON berisi daftar URL
+ *   --concurrency <n>   Jumlah request paralel (default: 2)
+ *   --delay <ms>        Jeda antar request (default: 3000ms untuk hindari rate-limit)
+ *   --limit <n>         Batas maksimal sepatu dari katalog (default: 20)
+ *   --dry-run           Hanya tampilkan URL tanpa menyimpan ke database
  */
 
 import * as path from "path";
 import * as fs from "fs";
+import * as cheerio from "cheerio";
 import { scrapeRunRepeatShoe } from "./scrape-runrepeat";
-
 import { ShoeCategory } from "../src/types";
 
 // ─────────────────────────────────────────────
@@ -31,30 +31,98 @@ import { ShoeCategory } from "../src/types";
 interface UrlEntry {
   url: string;
   categoryOverride?: ShoeCategory;
+  subCategoryOverride?: ShoeCategory;
 }
 
 interface JobResult {
   url: string;
   status: "success" | "failed" | "skipped";
-  shoe?: string;  // "<brand> <model>"
+  shoe?: string;
   error?: string;
   durationMs: number;
+}
+
+// ─────────────────────────────────────────────
+// Extract URLs from Catalog Page
+// ─────────────────────────────────────────────
+
+async function fetchCatalogUrls(catalogUrl: string, limit: number): Promise<UrlEntry[]> {
+  console.log(`\n[Catalog] 🌐 Mengambil daftar sepatu dari katalog: ${catalogUrl}`);
+
+  const response = await fetch(catalogUrl, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "Accept":
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Gagal fetch catalog (${response.status}): ${response.statusText}`);
+  }
+
+  const html = await response.text();
+  const $ = cheerio.load(html);
+
+  const foundUrls = new Set<string>();
+
+  $("a").each((_, el) => {
+    let href = $(el).attr("href");
+    if (!href) return;
+
+    if (href.startsWith("/")) {
+      href = `https://runrepeat.com${href}`;
+    }
+
+    const match = href.match(/^https:\/\/runrepeat\.com\/([a-z0-9]+(?:-[a-z0-9]+)+)$/i);
+    if (match) {
+      const slug = match[1].toLowerCase();
+      const ignoredPrefixes = [
+        "catalog",
+        "guides",
+        "ranking",
+        "rankings",
+        "best",
+        "compare",
+        "deals",
+        "reviews",
+        "about",
+        "contact",
+        "privacy-policy",
+        "terms-of-use",
+        "newsletter",
+        "brand",
+      ];
+      const isIgnored = ignoredPrefixes.some((prefix) => slug === prefix || slug.startsWith(`${prefix}-`));
+      if (!isIgnored) {
+        foundUrls.add(href.split("#")[0].split("?")[0]);
+      }
+    }
+  });
+
+  const urlList = Array.from(foundUrls).slice(0, limit);
+  console.log(`[Catalog] Ditemukan ${foundUrls.size} link sepatu unik. Diambil ${urlList.length} sepatu sesuai limit (${limit}).\n`);
+  return urlList.map((url) => ({ url }));
 }
 
 // ─────────────────────────────────────────────
 // Parse CLI Args
 // ─────────────────────────────────────────────
 
-function parseArgs(argv: string[]): {
+async function parseArgs(argv: string[]): Promise<{
   urls: UrlEntry[];
   concurrency: number;
   delayMs: number;
   dryRun: boolean;
-} {
+}> {
   const args = argv.slice(2);
   let concurrency = 2;
   let delayMs = 3000;
   let dryRun = false;
+  let catalogLimit = 20;
+  let catalogUrl: string | null = null;
   const urls: UrlEntry[] = [];
 
   for (let i = 0; i < args.length; i++) {
@@ -64,8 +132,12 @@ function parseArgs(argv: string[]): {
       concurrency = Math.max(1, parseInt(args[++i], 10) || 2);
     } else if (arg === "--delay" && args[i + 1]) {
       delayMs = Math.max(0, parseInt(args[++i], 10) || 3000);
+    } else if (arg === "--limit" && args[i + 1]) {
+      catalogLimit = Math.max(1, parseInt(args[++i], 10) || 20);
     } else if (arg === "--dry-run") {
       dryRun = true;
+    } else if (arg === "--catalog" && args[i + 1]) {
+      catalogUrl = args[++i];
     } else if (arg === "--file" && args[i + 1]) {
       const filePath = path.resolve(process.cwd(), args[++i]);
       if (!fs.existsSync(filePath)) {
@@ -80,7 +152,6 @@ function parseArgs(argv: string[]): {
         console.error(`[Bulk] ❌ Gagal parsing JSON dari: ${filePath}`);
         process.exit(1);
       }
-      // Support: array of strings atau array of objects
       if (Array.isArray(parsed)) {
         for (const item of parsed) {
           if (typeof item === "string") {
@@ -95,6 +166,15 @@ function parseArgs(argv: string[]): {
       }
     } else if (arg.startsWith("http")) {
       urls.push({ url: arg });
+    }
+  }
+
+  if (catalogUrl) {
+    try {
+      const catalogEntries = await fetchCatalogUrls(catalogUrl, catalogLimit);
+      urls.push(...catalogEntries);
+    } catch (err) {
+      console.error(`[Catalog Error] Gagal memuat katalog:`, err);
     }
   }
 
@@ -117,22 +197,23 @@ function printSeparator() {
 }
 
 // ─────────────────────────────────────────────
-// Worker — scrape satu URL
+// Worker — Scrape Satu Sepatu
 // ─────────────────────────────────────────────
 
 async function scrapeOne(entry: UrlEntry, index: number, total: number): Promise<JobResult> {
   const start = Date.now();
   const label = `[${index + 1}/${total}]`;
 
-  console.log(`\n${label} 🔍 Mulai scraping: ${entry.url}`);
-  if (entry.categoryOverride) {
-    console.log(`${label}    ↳ Category override: ${entry.categoryOverride}`);
-  }
+  console.log(`\n${label} 🔍 Scraping: ${entry.url}`);
 
   try {
     const result = await scrapeRunRepeatShoe(entry);
     const durationMs = Date.now() - start;
-    console.log(`${label} ✅ Selesai: ${result.brand} ${result.model} (${formatDuration(durationMs)})`);
+    console.log(
+      `${label} ✅ Berhasil: ${result.brand} ${result.model} -> [${result.category}${
+        result.subCategory ? ` / ${result.subCategory}` : ""
+      }] (${formatDuration(durationMs)})`
+    );
     return {
       url: entry.url,
       status: "success",
@@ -163,8 +244,6 @@ async function runWithConcurrency(
 ): Promise<JobResult[]> {
   const results: JobResult[] = [];
   const total = entries.length;
-
-  // Shared index counter (closure-safe)
   let nextIndex = 0;
 
   async function worker(workerId: number): Promise<void> {
@@ -172,57 +251,21 @@ async function runWithConcurrency(
       const index = nextIndex++;
       if (index >= total) break;
 
-      // Jeda antar request kecuali request pertama per worker
       if (index > 0 && delayMs > 0) {
-        console.log(`[Worker-${workerId}] ⏳ Jeda ${formatDuration(delayMs)} sebelum request berikutnya...`);
+        console.log(`[Worker-${workerId}] ⏳ Jeda ${formatDuration(delayMs)}...`);
         await sleep(delayMs);
       }
 
-      const result = await scrapeOne(entries[index], index, total);
-      results[index] = result;
+      const res = await scrapeOne(entries[index], index, total);
+      results.push(res);
     }
   }
 
-  // Spawn N workers
-  const workers = Array.from({ length: concurrency }, (_, i) => worker(i + 1));
+  const workerCount = Math.min(concurrency, total);
+  const workers = Array.from({ length: workerCount }, (_, i) => worker(i + 1));
   await Promise.all(workers);
 
   return results;
-}
-
-// ─────────────────────────────────────────────
-// Print Summary
-// ─────────────────────────────────────────────
-
-function printSummary(results: JobResult[], totalMs: number) {
-  printSeparator();
-  console.log("\n📊 RINGKASAN HASIL SCRAPING");
-  printSeparator();
-
-  const success = results.filter((r) => r.status === "success");
-  const failed = results.filter((r) => r.status === "failed");
-
-  console.log(`✅ Berhasil  : ${success.length}`);
-  console.log(`❌ Gagal     : ${failed.length}`);
-  console.log(`📦 Total     : ${results.length}`);
-  console.log(`⏱  Durasi    : ${formatDuration(totalMs)}`);
-
-  if (success.length > 0) {
-    console.log("\n✅ Sepatu yang berhasil disimpan:");
-    for (const r of success) {
-      console.log(`   • ${r.shoe} (${formatDuration(r.durationMs)})`);
-    }
-  }
-
-  if (failed.length > 0) {
-    console.log("\n❌ URL yang gagal:");
-    for (const r of failed) {
-      console.log(`   • ${r.url}`);
-      console.log(`     Error: ${r.error}`);
-    }
-  }
-
-  printSeparator();
 }
 
 // ─────────────────────────────────────────────
@@ -230,56 +273,65 @@ function printSummary(results: JobResult[], totalMs: number) {
 // ─────────────────────────────────────────────
 
 async function main() {
-  const { urls, concurrency, delayMs, dryRun } = parseArgs(process.argv);
+  const { urls, concurrency, delayMs, dryRun } = await parseArgs(process.argv);
 
   if (urls.length === 0) {
-    console.error(`
-[Bulk] ❌ Tidak ada URL yang diberikan.
+    console.log(`
+ℹ️  RunRepeat Shoe & Catalog Scraper
 
-Cara penggunaan:
-  # Dari file JSON:
-  npx tsx scripts/scrape-bulk.ts --file scripts/urls.json
+Pilihan Pemakaian:
+  1. Per Sepatu (satu atau banyak link):
+     npx tsx scripts/scrape-bulk.ts https://runrepeat.com/mizuno-neo-vista-2 https://runrepeat.com/asics-novablast-4
 
-  # Langsung dari argumen CLI:
-  npx tsx scripts/scrape-bulk.ts https://runrepeat.com/asics-novablast-4 https://runrepeat.com/nike-pegasus-41
+  2. Otomatis dari Katalog RunRepeat:
+     npx tsx scripts/scrape-bulk.ts --catalog https://runrepeat.com/catalog/running-shoes --limit 10
 
-  # Dengan opsi:
-  npx tsx scripts/scrape-bulk.ts --concurrency 3 --delay 5000 --file scripts/urls.json
-    `);
-    process.exit(1);
+  3. Dari File Daftar URL:
+     npx tsx scripts/scrape-bulk.ts --file scripts/urls.json
+
+Opsi:
+  --concurrency <n>   Jumlah request paralel (default: 2)
+  --delay <ms>        Jeda antar request (default: 3000ms)
+  --limit <n>         Batas jumlah sepatu dari katalog (default: 20)
+  --dry-run           Hanya tampilkan URL tanpa scraping
+`);
+    process.exit(0);
   }
 
   printSeparator();
-  console.log("🚀 SCRAPER BULK — RunRepeat");
-  printSeparator();
-  console.log(`📋 Total URL    : ${urls.length}`);
-  console.log(`⚡ Concurrency  : ${concurrency} request paralel`);
-  console.log(`⏳ Delay        : ${formatDuration(delayMs)} antar request`);
-  if (dryRun) console.log("🔍 Mode         : DRY RUN (tidak ada data yang disimpan)");
+  console.log(`🚀 Memulai Bulk Scraping: ${urls.length} target URL`);
+  console.log(`   Concurrency: ${concurrency} | Delay: ${formatDuration(delayMs)}`);
+  if (dryRun) console.log("   ⚠️  MODE: DRY-RUN (tidak ada penyimpanan database)");
   printSeparator();
 
   if (dryRun) {
-    console.log("\n📋 Daftar URL yang akan di-scrape:");
     urls.forEach((entry, i) => {
-      const cat = entry.categoryOverride ? ` [${entry.categoryOverride}]` : "";
-      console.log(`  ${i + 1}. ${entry.url}${cat}`);
+      console.log(`  ${i + 1}. ${entry.url}`);
     });
-    console.log(`\n[Dry Run] Selesai. Jalankan tanpa --dry-run untuk mulai scraping.`);
-    return;
+    console.log("\n[Dry Run] Selesai.");
+    process.exit(0);
   }
 
   const startTime = Date.now();
   const results = await runWithConcurrency(urls, concurrency, delayMs);
-  const totalMs = Date.now() - startTime;
+  const totalDuration = Date.now() - startTime;
 
-  printSummary(results, totalMs);
+  // Ringkasan
+  const success = results.filter((r) => r.status === "success").length;
+  const failed = results.filter((r) => r.status === "failed").length;
 
-  // Exit code non-zero jika ada yang gagal
-  const anyFailed = results.some((r) => r.status === "failed");
-  process.exit(anyFailed ? 1 : 0);
+  printSeparator();
+  console.log(`📊 Ringkasan Selesai (${formatDuration(totalDuration)}):`);
+  console.log(`   ✅ Berhasil: ${success}/${urls.length}`);
+  if (failed > 0) {
+    console.log(`   ❌ Gagal:    ${failed}/${urls.length}`);
+  }
+  printSeparator();
+
+  process.exit(failed > 0 && success === 0 ? 1 : 0);
 }
 
 main().catch((err) => {
-  console.error("[Bulk] Fatal error:", err);
+  console.error("[Fatal Error]", err);
   process.exit(1);
 });

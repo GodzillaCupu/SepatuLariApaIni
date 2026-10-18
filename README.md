@@ -100,7 +100,13 @@ npm run db:push
 # 3. Masukkan data katalog awal (6 sepatu lab teruji)
 npm run db:seed
 
-# 4. Jalankan server pengembangan lokal
+# 4. (Opsional) Ambil data sepatu otomatis dari RunRepeat
+# - Ambil dari halaman katalog:
+npm run scrape:catalog
+# - Atau ambil per sepatu tertentu:
+npm run scrape https://runrepeat.com/mizuno-neo-vista
+
+# 5. Jalankan server pengembangan lokal
 npm run dev
 ```
 

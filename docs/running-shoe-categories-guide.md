@@ -994,5 +994,17 @@ Mau beli sepatu untuk apa?
 
 ---
 
+## Database Mapping & Auto-Classification
+
+Untuk mendukung sepatu multi-fungsi (contoh: *Mizuno Neo Vista 2* yang memenuhi kriteria *Super Trainer*, *Max Cushion*, dan *Long Run*), struktur data menggunakan pendekatan dua kategori teratas:
+
+1. **`category` (Primer)**: Kategori dengan skor kecocokan tertinggi / fungsi utama sepatu.
+2. **`sub_category` (Sekunder)**: Kategori pendukung dengan skor kecocokan tertinggi kedua.
+3. **`terrain` (Medan)**: Khusus kategori trail (`multi_ground`, `soft_ground`, `technical_trail`, dll).
+
+Sistem scraper RunRepeat (`scripts/scrape-runrepeat.ts`) menggunakan algoritma *Scoring Engine* yang menghitung bobot sinyal artikel (verdict, deskripsi penggunaan) dan data lab (stack, plate, bobot, foam) untuk otomatis menetapkan `category` dan `sub_category` tanpa intervensi manual.
+
+---
+
 *Dokumen ini dibuat sebagai referensi kategorisasi produk untuk aplikasi LariYuk.*  
 *Last updated: Oktober 2026*

@@ -14,7 +14,8 @@
     "db:check": "tsx scripts/test-db-connection.ts",
     "scrape": "tsx scripts/scrape-runrepeat.ts",
     "scrape:bulk": "tsx scripts/scrape-bulk.ts",
-    "scrape:bulk:file": "tsx scripts/scrape-bulk.ts --file scripts/urls.json"
+    "scrape:bulk:file": "tsx scripts/scrape-bulk.ts --file scripts/urls.json",
+    "scrape:catalog": "tsx scripts/scrape-bulk.ts --catalog https://runrepeat.com/catalog/running-shoes"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
