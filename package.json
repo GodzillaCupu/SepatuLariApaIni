@@ -20,6 +20,7 @@
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
     "@libsql/client": "^0.10.0",
+    "@tursodatabase/sync": "^0.8.3",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.33.0",
     "lucide-react": "^0.447.0",
