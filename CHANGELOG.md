@@ -80,12 +80,3 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 ### Milestone 5: Fitur Komunitas & Pengajuan Sepatu
 - [ ] Form CTA kontribusi jika sepatu yang dicari belum ada di database.
 - [ ] Generator otomatis link GitHub Issue dengan template data spesifikasi siap isi.
-
-
-
--> update selanjut-nya :
-1. thumbnail photo + photo product di page nya.
-2. ~~algoritma menandai nama brand (opsi 1)~~ — selesai (`scripts/lib/brands.ts`).
-3. brand jadi tabel sendiri (bukan string) (opsi 2) — belum; sementara brand = string kanonik dari `BRANDS`.
-4. fitur menu road dan trail.
-5. scraping lebih akurat — sebagian: definisi sizing & breathability selesai; tinggal ambang lebar dari angka mm lab, validasi dengan lebih banyak sampel, dan backfill DB (`db:push` + `scrape:fix`).
