@@ -39,9 +39,9 @@ export function DonationModal({ open, onClose }: Props) {
           <X className="w-4 h-4" />
         </button>
         <div className="space-y-1 pt-1">
-          <h3 className="text-sm font-extrabold text-slate-900">☕ Dukung LariYuk</h3>
+          <h3 className="text-sm font-extrabold text-slate-900">☕ Dukung Lari Yuk ☕</h3>
           <p className="text-[11px] text-slate-500 leading-relaxed">
-            Scan QRIS dengan GoPay, OVO, ShopeePay, Dana, atau m-banking.
+            Scan QRIS, Untuk Membelikan Developer Kopi.
           </p>
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -152,7 +152,7 @@ export default function HomePage() {
   };
 
   return (
-    <main className={`min-h-screen ${compareIds.length > 0 ? "pb-28" : "pb-16"}`}>
+    <main className={`min-h-screen ${compareIds.length > 0 ? "pb-48" : "pb-32"}`}>
       <Navbar />
 
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
@@ -333,7 +333,7 @@ export default function HomePage() {
 
       {/* Bar Bandingkan */}
       {compareIds.length > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-30 p-3 pointer-events-none">
+        <div className="fixed bottom-24 inset-x-0 z-30 px-3 pointer-events-none">
           <div className="max-w-2xl mx-auto bg-slate-900 text-white rounded-2xl shadow-lg px-3.5 py-2.5 flex items-center gap-3 pointer-events-auto">
             <GitCompareArrows className="w-4 h-4 text-emerald-400 shrink-0" />
             <p className="text-xs flex-1 min-w-0 truncate">

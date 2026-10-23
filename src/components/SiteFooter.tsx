@@ -12,46 +12,47 @@ export function SiteFooter() {
   const [feedback, setFeedback] = useState<FeedbackKind | null>(null);
 
   return (
-    <footer className="mt-8 bg-white border-t border-slate-100 px-4 py-2.5">
+    <>
+    <footer className="fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200/70 px-4 pt-2.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(15,23,42,0.04)]">
       <div className="max-w-2xl mx-auto space-y-2 text-[11px] text-slate-500">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span>
-              Dibuat oleh{" "}
-              <a
-                href={developer.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-slate-700 hover:underline"
-              >
-                {developer.name}
-              </a>
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            className="font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
-          >
-            <Heart className="w-3 h-3 text-rose-500 fill-rose-500" /> Donasi
-          </button>
-        </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
           {(["bug", "feature"] as FeedbackKind[]).map((k) => (
             <button
               key={k}
               type="button"
               onClick={() => setFeedback(k)}
-              className="flex-1 py-1.5 rounded-full border border-slate-200 bg-white font-semibold text-slate-600 hover:border-emerald-300 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:border-emerald-300 active:scale-95 transition"
             >
-              {FEEDBACK[k].emoji} {FEEDBACK[k].label}
+              <span>{FEEDBACK[k].emoji}</span>
+              {FEEDBACK[k].label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-emerald-200 bg-emerald-50 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 active:scale-95 transition"
+          >
+            <Heart className="w-3.5 h-3.5 text-rose-500 fill-rose-500" /> Donasi
+          </button>
         </div>
+        <p className="flex items-center justify-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          <span>
+            Dibuat oleh{" "}
+            <a
+              href={developer.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-slate-700 hover:underline"
+            >
+              {developer.name}
+            </a>
+          </span>
+        </p>
       </div>
-      <DonationModal open={open} onClose={() => setOpen(false)} />
-      <FeedbackModal kind={feedback} onClose={() => setFeedback(null)} />
     </footer>
+    <DonationModal open={open} onClose={() => setOpen(false)} />
+    <FeedbackModal kind={feedback} onClose={() => setFeedback(null)} />
+    </>
   );
 }
