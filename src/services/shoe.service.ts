@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { shoes, ShoeRecord } from "@/db/schema";
-import { eq, like, or, and, desc } from "drizzle-orm";
+import { eq, like, or, and, desc, sql } from "drizzle-orm";
 import { RunningShoe, ShoeCategory, CategoryMeta } from "@/types";
 import { FALLBACK_SHOES } from "@/data/fallback-shoes";
 import { CATEGORIES_META } from "@/constants/categories";
@@ -36,6 +36,12 @@ function formatShoeRecord(record: ShoeRecord): RunningShoe {
     targetPaceRange: record.targetPaceRange,
     runnerType: record.runnerType as any,
     surface: record.surface as any,
+    sizing: record.sizing as any,
+    lengthFit: record.lengthFit as any,
+    widthFit: record.widthFit as any,
+    fitVotes: record.fitVotes,
+    breathability: record.breathability as any,
+    upperMaterial: record.upperMaterial,
     specs: {
       weightGrams: record.weightGrams,
       dropMm: record.dropMm,
@@ -60,6 +66,8 @@ function formatShoeRecord(record: ShoeRecord): RunningShoe {
 export async function getAllShoes(filter?: {
   category?: string;
   brand?: string;
+  sizing?: string;
+  breathability?: string;
   search?: string;
   limit?: number;
 }): Promise<RunningShoe[]> {
@@ -75,8 +83,10 @@ export async function getAllShoes(filter?: {
       );
     }
     if (filter?.brand) {
-      conditions.push(eq(shoes.brand, filter.brand));
+      conditions.push(eq(sql`lower(${shoes.brand})`, filter.brand.toLowerCase()));
     }
+    if (filter?.sizing) conditions.push(eq(shoes.sizing, filter.sizing));
+    if (filter?.breathability) conditions.push(eq(shoes.breathability, filter.breathability));
     if (filter?.search) {
       const q = `%${filter.search}%`;
       conditions.push(or(like(shoes.brand, q), like(shoes.model, q)));
@@ -110,6 +120,8 @@ export async function getAllShoes(filter?: {
       return false;
     }
     if (filter?.brand && shoe.brand.toLowerCase() !== filter.brand.toLowerCase()) return false;
+    if (filter?.sizing && shoe.sizing !== filter.sizing) return false;
+    if (filter?.breathability && shoe.breathability !== filter.breathability) return false;
     if (filter?.search) {
       const q = filter.search.toLowerCase();
       if (!shoe.brand.toLowerCase().includes(q) && !shoe.model.toLowerCase().includes(q)) {

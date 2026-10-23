@@ -3,7 +3,7 @@ import { RunningShoe } from "@/types";
 export const FALLBACK_SHOES: RunningShoe[] = [
   {
     id: "asics-novablast-4",
-    brand: "Asics",
+    brand: "ASICS",
     model: "Novablast 4",
     releaseYear: 2024,
     category: "daily_trainer",
@@ -159,7 +159,7 @@ export const FALLBACK_SHOES: RunningShoe[] = [
   },
   {
     id: "asics-gel-nimbus-26",
-    brand: "Asics",
+    brand: "ASICS",
     model: "Gel-Nimbus 26",
     releaseYear: 2024,
     category: "max_cushion",
@@ -198,7 +198,7 @@ export const FALLBACK_SHOES: RunningShoe[] = [
   },
   {
     id: "hoka-speedgoat-5",
-    brand: "Hoka",
+    brand: "HOKA",
     model: "Speedgoat 5",
     releaseYear: 2023,
     category: "trail_daily",

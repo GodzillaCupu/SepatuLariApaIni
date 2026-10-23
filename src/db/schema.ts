@@ -23,6 +23,14 @@ export const shoes = sqliteTable("shoes", {
   plateType: text("plate_type").notNull().default("None"),
   cushionFeel: text("cushion_feel").notNull().default("Balanced"),
 
+  // Fit & Breathability (definisi: scripts/lib/classify-fit.ts)
+  sizing: text("sizing").notNull().default("unknown"), // true_to_size | narrow | wide | runs_small | runs_large | unknown
+  lengthFit: text("length_fit").notNull().default("unknown"),
+  widthFit: text("width_fit").notNull().default("unknown"),
+  fitVotes: integer("fit_votes"),
+  breathability: text("breathability").notNull().default("unknown"), // cool | moderate | warm | unknown
+  upperMaterial: text("upper_material"),
+
   // Review & Verdict
   verdictSummary: text("verdict_summary").notNull(),
   pros: text("pros").notNull(), // JSON string: ["bouncy", "comfortable"]

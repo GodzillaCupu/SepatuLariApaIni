@@ -1,5 +1,17 @@
 import * as cheerio from "cheerio";
 import type { PlateType } from "../../src/types";
+import { splitBrandModel } from "./brands";
+import {
+  classifyBreathability,
+  classifyLengthFit,
+  classifySizing,
+  classifyWidthFit,
+  normalizeUpperMaterial,
+  type Breathability,
+  type LengthFit,
+  type Sizing,
+  type WidthFit,
+} from "./classify-fit";
 
 /**
  * Parser murni halaman review RunRepeat (tanpa network / DB → mudah dites).
@@ -34,6 +46,12 @@ export interface ParsedPage {
   summary: string;
   articleText: string;
   imageUrl: string | null;
+  sizing: Sizing;
+  lengthFit: LengthFit;
+  widthFit: WidthFit;
+  fitVotes: number | null;
+  breathability: Breathability;
+  upperMaterial: string | null;
 }
 
 const OZ_TO_G = 28.3495;
@@ -92,6 +110,15 @@ function readFacts($: cheerio.CheerioAPI): Map<string, string> {
     facts.set(name, value);
   });
   return facts;
+}
+
+/** Voting ukuran: "… fits true to size (251 votes)" + indeks bar `.this-shoe` (0-4). */
+function readFitVote($: cheerio.CheerioAPI): { votes: number | null; barIndex: number | null } {
+  const votesMatch = clean($(".size-distribution-text").first().text()).match(/\((\d[\d,]*)\s+votes?\)/i);
+  const votes = votesMatch ? parseInt(votesMatch[1].replace(/,/g, ""), 10) : null;
+  const bars = $(".size-distribution-container .size-distribution-bar");
+  const idx = bars.toArray().findIndex((el) => $(el).hasClass("this-shoe"));
+  return { votes, barIndex: idx >= 0 ? idx : null };
 }
 
 /** Kalimat yang membahas plat TAPI bukan klaim bahwa sepatu ini memilikinya. */
@@ -172,17 +199,7 @@ export function parseRunRepeatHtml(html: string): ParsedPage {
   const rawTitle = clean($("h1").first().text()) || clean($("title").text().split("|")[0]);
   const title = rawTitle.replace(/^cut in half:\s*/i, "").replace(/\s+review$/i, "").trim();
 
-  const brandFact = facts.get("brand") ?? null;
-  let brand: string | null = null;
-  let model: string | null = null;
-  if (brandFact && title.toLowerCase().startsWith(brandFact.toLowerCase())) {
-    brand = brandFact;
-    model = title.slice(brandFact.length).trim() || null;
-  } else if (title) {
-    const parts = title.split(" ");
-    brand = parts[0] ?? null;
-    model = parts.slice(1).join(" ") || null;
-  }
+  const { brand, model } = splitBrandModel(title, facts.get("brand") ?? null);
 
   // Lab dulu; fallback ke angka brand bila lab tidak ada.
   // Label bervariasi antar halaman ("Heel lab" vs "Heel stack lab").
@@ -235,6 +252,17 @@ export function parseRunRepeatHtml(html: string): ParsedPage {
   });
   imageUrl = imageUrl ?? $("meta[property='og:image']").attr("content") ?? null;
 
+  const { votes: fitVotes, barIndex } = readFitVote($);
+  const lengthFit = classifyLengthFit(barIndex, fitVotes);
+  const widthFit = classifyWidthFit(rows.get("width / fit") ?? null, rows.get("toebox width") ?? null);
+  const upperMaterial = normalizeUpperMaterial(facts.get("material"));
+  const oldScoreMatch = (rows.get("breathability (old method)") ?? "").match(/\b([1-5](?:\.\d)?)\b/);
+  const breathability = classifyBreathability(
+    rows.get("breathability") ?? facts.get("breathability") ?? null,
+    oldScoreMatch ? parseFloat(oldScoreMatch[1]) : null,
+    `${upperMaterial ?? ""} ${facts.get("technology") ?? ""} ${facts.get("features") ?? ""}`
+  );
+
   const evidence = `${articleText} ${description} ${facts.get("technology") ?? ""} ${facts.get("features") ?? ""}`;
 
   return {
@@ -258,5 +286,11 @@ export function parseRunRepeatHtml(html: string): ParsedPage {
     summary: shortSummary(description),
     articleText,
     imageUrl,
+    sizing: classifySizing(lengthFit, widthFit),
+    lengthFit,
+    widthFit,
+    fitVotes,
+    breathability,
+    upperMaterial,
   };
 }

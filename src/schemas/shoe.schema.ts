@@ -42,6 +42,10 @@ export const RunnerTypeEnum = z.enum(["Neutral", "Mild Stability", "Stability"])
 export const SurfaceEnum = z.enum(["Road", "Trail", "All-Terrain"]);
 export const PlateTypeEnum = z.enum(["None", "Nylon", "Carbon Fiber", "TPU"]);
 export const CushionFeelEnum = z.enum(["Plush", "Balanced", "Firm"]);
+export const SizingEnum = z.enum(["true_to_size", "narrow", "wide", "runs_small", "runs_large", "unknown"]);
+export const LengthFitEnum = z.enum(["runs_small", "true_to_size", "runs_large", "unknown"]);
+export const WidthFitEnum = z.enum(["narrow", "standard", "wide", "unknown"]);
+export const BreathabilityEnum = z.enum(["cool", "moderate", "warm", "unknown"]);
 
 /** Batas masuk akal data lab sepatu lari. Di luar rentang = hampir pasti salah scrape. */
 export const SPEC_LIMITS = {
@@ -90,6 +94,12 @@ export const RunningShoeSchema = z.object({
   targetPaceRange: z.string().regex(PACE_RANGE_REGEX, 'Format harus "m:ss - m:ss min/km"'),
   runnerType: RunnerTypeEnum.default("Neutral"),
   surface: SurfaceEnum.default("Road"),
+  sizing: SizingEnum.default("unknown"),
+  lengthFit: LengthFitEnum.default("unknown"),
+  widthFit: WidthFitEnum.default("unknown"),
+  fitVotes: z.number().int().nonnegative().nullable().optional(),
+  breathability: BreathabilityEnum.default("unknown"),
+  upperMaterial: z.string().nullable().optional(),
   specs: ShoeSpecsSchema,
   verdict: ShoeVerdictSchema,
   imageUrl: z.string().url().nullable().optional(),

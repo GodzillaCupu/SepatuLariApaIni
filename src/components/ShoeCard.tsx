@@ -3,6 +3,7 @@
 import React from "react";
 import { RunningShoe } from "@/types";
 import { CATEGORIES_META } from "@/constants/categories";
+import { FitBadges } from "@/components/FitBadges";
 import { Gauge, Scale, MoveVertical, ChevronRight } from "lucide-react";
 
 interface Props {
@@ -48,6 +49,8 @@ export function ShoeCard({ shoe, onClick }: Props) {
         <span className="text-slate-300">•</span>
         <span className="truncate text-slate-500">{shoe.primaryUse}</span>
       </div>
+
+      <FitBadges shoe={shoe} />
 
       {/* Lab Specs Summary Bar */}
       <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-100 text-center">

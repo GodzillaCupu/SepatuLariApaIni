@@ -3,6 +3,7 @@
 import React from "react";
 import { RunningShoe } from "@/types";
 import { CATEGORIES_META } from "@/constants/categories";
+import { FitBadges } from "@/components/FitBadges";
 import {
   X,
   ExternalLink,
@@ -90,6 +91,11 @@ export function ShoeDetailModal({ shoe, onClose }: Props) {
               <p className="text-[11px] text-slate-500">{shoe.primaryUse}</p>
             </div>
           </div>
+
+          <FitBadges shoe={shoe} />
+          {shoe.upperMaterial && (
+            <p className="text-[11px] text-slate-500 -mt-3">Bahan upper: {shoe.upperMaterial}</p>
+          )}
 
           {/* Lab Metrics Grid */}
           <div>

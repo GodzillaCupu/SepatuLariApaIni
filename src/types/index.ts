@@ -39,6 +39,10 @@ export type RunnerType = "Neutral" | "Mild Stability" | "Stability";
 export type SurfaceType = "Road" | "Trail" | "All-Terrain";
 export type PlateType = "None" | "Nylon" | "Carbon Fiber" | "TPU";
 export type CushionFeel = "Plush" | "Balanced" | "Firm";
+export type Sizing = "true_to_size" | "narrow" | "wide" | "runs_small" | "runs_large" | "unknown";
+export type LengthFit = "runs_small" | "true_to_size" | "runs_large" | "unknown";
+export type WidthFit = "narrow" | "standard" | "wide" | "unknown";
+export type Breathability = "cool" | "moderate" | "warm" | "unknown";
 
 export interface ShoeSpecs {
   weightGrams: number;
@@ -69,6 +73,12 @@ export interface RunningShoe {
   targetPaceRange: string;
   runnerType: RunnerType;
   surface: SurfaceType;
+  sizing?: Sizing;
+  lengthFit?: LengthFit;
+  widthFit?: WidthFit;
+  fitVotes?: number | null;
+  breathability?: Breathability;
+  upperMaterial?: string | null;
   specs: ShoeSpecs;
   verdict: ShoeVerdict;
   imageUrl?: string | null;

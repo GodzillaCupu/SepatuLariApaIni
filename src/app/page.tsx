@@ -5,14 +5,50 @@ import { Navbar } from "@/components/Navbar";
 import { RotationFilter } from "@/components/RotationFilter";
 import { ShoeCard } from "@/components/ShoeCard";
 import { ShoeDetailModal } from "@/components/ShoeDetailModal";
-import { RunningShoe } from "@/types";
+import { RunningShoe, Sizing, Breathability } from "@/types";
+import { SIZING_META, BREATHABILITY_META } from "@/constants/fit";
 import { Search, Loader2, Sparkles, AlertCircle } from "lucide-react";
+
+function FilterChips({
+  title,
+  value,
+  onChange,
+  options,
+}: {
+  title: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[][];
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{title}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map(([key, label]) => (
+          <button
+            key={key}
+            onClick={() => onChange(value === key ? "" : key)}
+            className={`text-[11px] font-semibold px-3 py-1 rounded-full border transition-colors ${
+              value === key
+                ? "bg-emerald-600 text-white border-emerald-600"
+                : "bg-white text-slate-600 border-slate-200 hover:border-emerald-300"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const [shoes, setShoes] = useState<RunningShoe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [sizingFilter, setSizingFilter] = useState<Sizing | "">("");
+  const [breathFilter, setBreathFilter] = useState<Breathability | "">("");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedShoe, setSelectedShoe] = useState<RunningShoe | null>(null);
 
@@ -49,9 +85,11 @@ export default function HomePage() {
           s.model.toLowerCase().includes(q) ||
           s.primaryUse.toLowerCase().includes(q)
         : true;
-      return matchCategory && matchSearch;
+      const matchSizing = sizingFilter ? s.sizing === sizingFilter : true;
+      const matchBreath = breathFilter ? s.breathability === breathFilter : true;
+      return matchCategory && matchSearch && matchSizing && matchBreath;
     });
-  }, [shoes, selectedCategory, searchQuery]);
+  }, [shoes, selectedCategory, searchQuery, sizingFilter, breathFilter]);
 
   return (
     <main className="min-h-screen pb-16">
@@ -92,6 +130,22 @@ export default function HomePage() {
           <RotationFilter
             selected={selectedCategory}
             onSelect={(cat) => setSelectedCategory(cat)}
+          />
+        </div>
+
+        {/* Fit & Breathability Filter */}
+        <div className="space-y-2">
+          <FilterChips
+            title="Fit"
+            value={sizingFilter}
+            onChange={(v) => setSizingFilter(v as Sizing | "")}
+            options={(["true_to_size", "narrow", "wide", "runs_small", "runs_large"] as Sizing[]).map((k) => [k, SIZING_META[k].label])}
+          />
+          <FilterChips
+            title="Adem / Panas"
+            value={breathFilter}
+            onChange={(v) => setBreathFilter(v as Breathability | "")}
+            options={(["cool", "moderate", "warm"] as Breathability[]).map((k) => [k, BREATHABILITY_META[k].label])}
           />
         </div>
 

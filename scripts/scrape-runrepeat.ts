@@ -148,6 +148,12 @@ export function buildShoeFromPage(
     targetPaceRange: classified.targetPaceRange,
     runnerType: arch.includes("stab") || category === "stability" ? ("Stability" as const) : ("Neutral" as const),
     surface: isTrailShoe ? ("Trail" as const) : ("Road" as const),
+    sizing: page.sizing,
+    lengthFit: page.lengthFit,
+    widthFit: page.widthFit,
+    fitVotes: page.fitVotes,
+    breathability: page.breathability,
+    upperMaterial: page.upperMaterial,
     specs: {
       weightGrams,
       dropMm,
@@ -184,7 +190,7 @@ export async function scrapeRunRepeatShoe(input: ScrapedData) {
   if (input.dryRun) {
     console.log(
       `[Scraper] 🧪 Dry-run OK: ${validated.brand} ${validated.model} [${validated.category}] ` +
-        `${validated.specs.weightGrams}g drop ${validated.specs.dropMm} stack ${validated.specs.heelStackMm}/${validated.specs.forefootStackMm} plat ${validated.specs.plateType}`
+        `${validated.sizing}/${validated.breathability} ${validated.specs.weightGrams}g drop ${validated.specs.dropMm} stack ${validated.specs.heelStackMm}/${validated.specs.forefootStackMm} plat ${validated.specs.plateType}`
     );
     return validated;
   }
@@ -203,6 +209,12 @@ export async function scrapeRunRepeatShoe(input: ScrapedData) {
     targetPaceRange: validated.targetPaceRange,
     runnerType: validated.runnerType,
     surface: validated.surface,
+    sizing: validated.sizing,
+    lengthFit: validated.lengthFit,
+    widthFit: validated.widthFit,
+    fitVotes: validated.fitVotes ?? null,
+    breathability: validated.breathability,
+    upperMaterial: validated.upperMaterial ?? null,
     weightGrams: validated.specs.weightGrams,
     dropMm: validated.specs.dropMm,
     heelStackMm: validated.specs.heelStackMm,

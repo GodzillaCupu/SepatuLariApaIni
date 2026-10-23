@@ -8,11 +8,13 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category") || undefined;
     const brand = searchParams.get("brand") || undefined;
+    const sizing = searchParams.get("sizing") || undefined;
+    const breathability = searchParams.get("breathability") || undefined;
     const search = searchParams.get("search") || undefined;
     const limitParam = searchParams.get("limit");
     const limit = limitParam ? parseInt(limitParam, 10) : undefined;
 
-    const data = await getAllShoes({ category, brand, search, limit });
+    const data = await getAllShoes({ category, brand, sizing, breathability, search, limit });
 
     return NextResponse.json(
       {

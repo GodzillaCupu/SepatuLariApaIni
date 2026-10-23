@@ -53,6 +53,12 @@ export function auditRow(row: ShoeRecord): string[] {
     targetPaceRange: row.targetPaceRange,
     runnerType: row.runnerType,
     surface: row.surface,
+    sizing: row.sizing,
+    lengthFit: row.lengthFit,
+    widthFit: row.widthFit,
+    fitVotes: row.fitVotes,
+    breathability: row.breathability,
+    upperMaterial: row.upperMaterial,
     specs: {
       weightGrams: row.weightGrams,
       dropMm: row.dropMm,
