@@ -4,6 +4,15 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- Scraper RunRepeat: ekstraksi spec lab, deteksi plat per kalimat, klasifikasi dari fakta terstruktur (lihat `scripts/README.md`).
+- Validasi Zod diperketat (batas spec, format pace, heel >= forefoot).
+
+### Added
+- `npm run db:audit`, `npm run test` (vitest), opsi `--from-db`, `--dry-run` (kini fetch + validasi), `--report` pada `scrape-bulk`.
+
 ## [0.1.0] - 2026-10-17 (Current Milestone)
 
 ### Selesai Dikerjakan (Added / Completed)
@@ -58,3 +67,17 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 ### Milestone 5: Fitur Komunitas & Pengajuan Sepatu
 - [ ] Form CTA kontribusi jika sepatu yang dicari belum ada di database.
 - [ ] Generator otomatis link GitHub Issue dengan template data spesifikasi siap isi.
+
+
+
+-> update selanjut-nya :
+1. thumbnail photo + photo product di page nya.
+
+2. cari algoritma untuk menandai nama brand (opsi 1)
+3. buat brand jadi identitas sendiri table sendiri (tidak string) (opsi 2)
+4. buat fitur menu road dan trail.
+5. buat scraping datanya bisa lebih akurat.
+
+data yang di perlukan : 
+-> definisi true size (patokan width dan long) -> di turunin jadi narrow / wide.
+-> definisi dari adem / pans

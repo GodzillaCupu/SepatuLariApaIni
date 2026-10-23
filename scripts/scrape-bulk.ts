@@ -15,13 +15,16 @@
  *   --concurrency <n>   Jumlah request paralel (default: 2)
  *   --delay <ms>        Jeda antar request (default: 3000ms untuk hindari rate-limit)
  *   --limit <n>         Batas maksimal sepatu dari katalog (default: 20)
- *   --dry-run           Hanya tampilkan URL tanpa menyimpan ke database
+ *   --dry-run           Fetch + parse + validasi, TANPA menulis ke database
+ *   --from-db           Re-scrape semua sepatu yang sudah ada di DB (pakai source_url & id lama)
+ *   --report <file>     Tulis hasil (success/needs_review/failed) ke file JSON
  */
 
 import * as path from "path";
 import * as fs from "fs";
 import * as cheerio from "cheerio";
-import { scrapeRunRepeatShoe } from "./scrape-runrepeat";
+import { createClient } from "@libsql/client";
+import { scrapeRunRepeatShoe, NeedsReviewError } from "./scrape-runrepeat";
 import { ShoeCategory } from "../src/types";
 
 // ─────────────────────────────────────────────
@@ -30,13 +33,15 @@ import { ShoeCategory } from "../src/types";
 
 interface UrlEntry {
   url: string;
+  /** Pertahankan id lama saat re-scrape baris DB. */
+  idOverride?: string;
   categoryOverride?: ShoeCategory;
   subCategoryOverride?: ShoeCategory;
 }
 
 interface JobResult {
   url: string;
-  status: "success" | "failed" | "skipped";
+  status: "success" | "failed" | "needs_review" | "skipped";
   shoe?: string;
   error?: string;
   durationMs: number;
@@ -113,6 +118,7 @@ async function parseArgs(argv: string[]): Promise<{
   concurrency: number;
   delayMs: number;
   dryRun: boolean;
+  reportPath: string | null;
 }> {
   const args = argv.slice(2);
   let concurrency = 2;
@@ -120,6 +126,8 @@ async function parseArgs(argv: string[]): Promise<{
   let dryRun = false;
   let catalogLimit = 20;
   let catalogUrl: string | null = null;
+  let fromDb = false;
+  let reportPath: string | null = null;
   const urls: UrlEntry[] = [];
 
   for (let i = 0; i < args.length; i++) {
@@ -133,6 +141,10 @@ async function parseArgs(argv: string[]): Promise<{
       catalogLimit = Math.max(1, parseInt(args[++i], 10) || 20);
     } else if (arg === "--dry-run") {
       dryRun = true;
+    } else if (arg === "--from-db") {
+      fromDb = true;
+    } else if (arg === "--report" && args[i + 1]) {
+      reportPath = args[++i];
     } else if (arg === "--catalog" && args[i + 1]) {
       catalogUrl = args[++i];
     } else if (arg === "--file" && args[i + 1]) {
@@ -166,6 +178,21 @@ async function parseArgs(argv: string[]): Promise<{
     }
   }
 
+  if (fromDb) {
+    const dbUrl = process.env.TURSO_DATABASE_URL || "file:./data/shoes.db";
+    const dbClient = createClient({ url: dbUrl, authToken: process.env.TURSO_AUTH_TOKEN || undefined });
+    const res = await dbClient.execute("SELECT id, source_url FROM shoes ORDER BY id");
+    for (const row of res.rows) {
+      const sourceUrl = String(row.source_url);
+      if (/^https:\/\/runrepeat\.com\//.test(sourceUrl)) {
+        urls.push({ url: sourceUrl, idOverride: String(row.id) });
+      } else {
+        console.warn(`[From-DB] ⚠️  ${row.id}: source_url tidak valid (${sourceUrl}) → perlu review manual`);
+      }
+    }
+    console.log(`[From-DB] ${urls.length} URL dimuat dari ${dbUrl}`);
+  }
+
   if (catalogUrl) {
     try {
       const catalogEntries = await fetchCatalogUrls(catalogUrl, catalogLimit);
@@ -175,7 +202,7 @@ async function parseArgs(argv: string[]): Promise<{
     }
   }
 
-  return { urls, concurrency, delayMs, dryRun };
+  return { urls, concurrency, delayMs, dryRun, reportPath };
 }
 
 // ─────────────────────────────────────────────
@@ -197,14 +224,19 @@ function printSeparator() {
 // Worker — Scrape Satu Sepatu
 // ─────────────────────────────────────────────
 
-async function scrapeOne(entry: UrlEntry, index: number, total: number): Promise<JobResult> {
+async function scrapeOne(
+  entry: UrlEntry,
+  index: number,
+  total: number,
+  dryRun: boolean
+): Promise<JobResult> {
   const start = Date.now();
   const label = `[${index + 1}/${total}]`;
 
   console.log(`\n${label} 🔍 Scraping: ${entry.url}`);
 
   try {
-    const result = await scrapeRunRepeatShoe(entry);
+    const result = await scrapeRunRepeatShoe({ ...entry, dryRun });
     const durationMs = Date.now() - start;
     console.log(
       `${label} ✅ Berhasil: ${result.brand} ${result.model} -> [${result.category}${
@@ -219,6 +251,10 @@ async function scrapeOne(entry: UrlEntry, index: number, total: number): Promise
     };
   } catch (err) {
     const durationMs = Date.now() - start;
+    if (err instanceof NeedsReviewError) {
+      console.warn(`${label} ⚠️  Perlu review: ${err.reasons.join("; ")}`);
+      return { url: entry.url, status: "needs_review", error: err.reasons.join("; "), durationMs };
+    }
     const errorMsg = err instanceof Error ? err.message : String(err);
     console.error(`${label} ❌ Gagal: ${errorMsg} (${formatDuration(durationMs)})`);
     return {
@@ -237,7 +273,8 @@ async function scrapeOne(entry: UrlEntry, index: number, total: number): Promise
 async function runWithConcurrency(
   entries: UrlEntry[],
   concurrency: number,
-  delayMs: number
+  delayMs: number,
+  dryRun: boolean
 ): Promise<JobResult[]> {
   const results: JobResult[] = [];
   const total = entries.length;
@@ -253,7 +290,7 @@ async function runWithConcurrency(
         await sleep(delayMs);
       }
 
-      const res = await scrapeOne(entries[index], index, total);
+      const res = await scrapeOne(entries[index], index, total, dryRun);
       results.push(res);
     }
   }
@@ -270,7 +307,7 @@ async function runWithConcurrency(
 // ─────────────────────────────────────────────
 
 async function main() {
-  const { urls, concurrency, delayMs, dryRun } = await parseArgs(process.argv);
+  const { urls, concurrency, delayMs, dryRun, reportPath } = await parseArgs(process.argv);
 
   if (urls.length === 0) {
     console.log(`
@@ -290,7 +327,12 @@ Opsi:
   --concurrency <n>   Jumlah request paralel (default: 2)
   --delay <ms>        Jeda antar request (default: 3000ms)
   --limit <n>         Batas jumlah sepatu dari katalog (default: 20)
-  --dry-run           Hanya tampilkan URL tanpa scraping
+  --dry-run           Fetch + parse + validasi tanpa menulis ke DB
+  --from-db           Re-scrape semua sepatu yang sudah ada di DB
+  --report <file>     Simpan hasil ke file JSON
+
+  4. Perbaiki data lama di DB (disarankan: --dry-run dulu):
+     npx tsx scripts/scrape-bulk.ts --from-db --dry-run --report scripts/report.json
 `);
     process.exit(0);
   }
@@ -298,30 +340,30 @@ Opsi:
   printSeparator();
   console.log(`🚀 Memulai Bulk Scraping: ${urls.length} target URL`);
   console.log(`   Concurrency: ${concurrency} | Delay: ${formatDuration(delayMs)}`);
-  if (dryRun) console.log("   ⚠️  MODE: DRY-RUN (tidak ada penyimpanan database)");
+  if (dryRun) console.log("   ⚠️  MODE: DRY-RUN (fetch + validasi, TIDAK menulis database)");
   printSeparator();
 
-  if (dryRun) {
-    urls.forEach((entry, i) => {
-      console.log(`  ${i + 1}. ${entry.url}`);
-    });
-    console.log("\n[Dry Run] Selesai.");
-    process.exit(0);
-  }
-
   const startTime = Date.now();
-  const results = await runWithConcurrency(urls, concurrency, delayMs);
+  const results = await runWithConcurrency(urls, concurrency, delayMs, dryRun);
   const totalDuration = Date.now() - startTime;
 
   // Ringkasan
   const success = results.filter((r) => r.status === "success").length;
   const failed = results.filter((r) => r.status === "failed").length;
+  const needsReview = results.filter((r) => r.status === "needs_review").length;
 
   printSeparator();
   console.log(`📊 Ringkasan Selesai (${formatDuration(totalDuration)}):`);
   console.log(`   ✅ Berhasil: ${success}/${urls.length}`);
+  if (needsReview > 0) {
+    console.log(`   ⚠️  Perlu review: ${needsReview}/${urls.length}`);
+  }
   if (failed > 0) {
     console.log(`   ❌ Gagal:    ${failed}/${urls.length}`);
+  }
+  if (reportPath) {
+    fs.writeFileSync(path.resolve(process.cwd(), reportPath), JSON.stringify(results, null, 2));
+    console.log(`   📝 Laporan: ${reportPath}`);
   }
   printSeparator();
 

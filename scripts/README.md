@@ -170,3 +170,26 @@ await db.insert(shoes).values(dbRecord).onConflictDoUpdate({
 3. **Koneksi Database Target**:
    - Jika variabel `TURSO_DATABASE_URL` diatur di `.env`, script akan langsung memasukkan data ke database cloud Turso.
    - Jika kosong, script otomatis menyimpan data ke file lokal `data/shoes.db`.
+
+---
+
+## Perbaikan Scraper & Audit Data (v2)
+
+Scraper lama salah ekstrak (berat acak, spec default 265g/8/36/28, plat "Carbon Fiber" di hampir semua sepatu). Versi baru:
+
+- `scripts/lib/runrepeat-parser.ts` — parser murni: spec lab dari **kolom pertama** tabel perbandingan RunRepeat, fakta (terrain, release date) dari blok `rr_facts__name`, plat dideteksi **per kalimat** (negasi/perbandingan diabaikan), busa dicocokkan per brand.
+- `scripts/lib/classify-shoe.ts` — klasifikasi kategori, kini memakai fakta terstruktur (terrain, pace, type) bukan seluruh HTML.
+- Tanpa default diam-diam: spec wajib tak ketemu / di luar batas (`SPEC_LIMITS` di `src/schemas/shoe.schema.ts`) → `needs_review`, tidak masuk DB.
+- `releaseYear` kosong disimpan sebagai `0` (= tidak diketahui; kolom NOT NULL).
+
+### Perintah
+
+```bash
+npm run db:audit                       # cek kualitas DB (read-only, exit 1 bila ada pelanggaran)
+npx tsx scripts/scrape-runrepeat.ts <url> --dry-run     # satu sepatu, tanpa tulis DB
+npx tsx scripts/scrape-bulk.ts --from-db --dry-run --report scripts/report.json   # uji re-scrape semua
+npx tsx scripts/scrape-bulk.ts --from-db --report scripts/report-fix.json         # tulis perbaikan ke DB
+npm run test                           # unit test parser / skema (fixture HTML nyata)
+```
+
+Selalu `cp data/shoes.db data/shoes.db.bak` sebelum menulis.
