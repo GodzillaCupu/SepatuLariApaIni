@@ -1,195 +1,145 @@
-# Dokumentasi Script Database & Tool Scraper (`scripts/`)
+# Dokumentasi Script Database & Scraper (`scripts/`)
 
-Folder ini berisi tool otomasi dan utilitas database untuk pengelolaan data spesifikasi lab **LariYuk (SepatuLariApaIni)**, baik untuk database **SQLite lokal** maupun **Turso Cloud**.
+Tool otomasi untuk mengelola data spesifikasi lab **LariYuk (SepatuLariApaIni)** di **SQLite lokal** (`data/shoes.db`) atau **Turso Cloud**. Target DB ditentukan `TURSO_DATABASE_URL` di `.env` / `.env.local` (kosong → file lokal).
 
 ---
 
-## 1. Daftar Script & Cara Penggunaan
+## 1. Daftar Script
 
-### A. Uji Koneksi Database (`scripts/test-db-connection.ts`)
-Digunakan untuk memverifikasi apakah aplikasi lokal dapat menjangkau database yang dikonfigurasikan di `.env` (Turso Cloud atau file SQLite lokal):
+| Script | Perintah | Fungsi |
+|---|---|---|
+| `test-db-connection.ts` | `npm run db:check` | Ping DB, tampilkan tipe koneksi & jumlah baris `shoes` |
+| `seed-initial.ts` | `npm run db:seed` | Isi 6 sepatu awal |
+| `scrape-runrepeat.ts` | `npm run scrape <url>` | Scrape **satu** halaman review RunRepeat → validasi → upsert |
+| `scrape-bulk.ts` | `npm run scrape:bulk ...` | Scrape banyak URL (argumen, file JSON, katalog, atau ulang dari DB) |
+| `audit-data.ts` | `npm run db:audit` | Audit kualitas tabel `shoes` (read-only, exit 1 bila ada pelanggaran) |
+| `lib/*` | — | Modul murni yang dipakai scraper (lihat §3) |
+| `__tests__/`, `__fixtures__/` | `npm run test` | Unit test (vitest) + HTML fixture nyata RunRepeat |
 
-```bash
-npm run db:check
-```
-*Output menampilkan:*
-- Tipe koneksi (`Turso Cloud (Remote)` atau `Local SQLite File`)
-- Endpoint URL & keberadaan Auth Token
-- Status ping SQL
-- Jumlah baris data yang ada pada tabel `shoes`
-
-### B. Seeding Sepatu Awal (`scripts/seed-initial.ts`)
-Mengisi database dengan 6 sepatu lab teruji secara instan:
+### Scraper satu sepatu
 
 ```bash
-npm run db:seed
-# Atau: npx tsx scripts/seed-initial.ts
-```
-Script akan otomatis mendeteksi konfigurasi di `.env` / `.env.local` dan menyuntikkan data ke target yang aktif.
-
-### C. Scraper RunRepeat Per Sepatu (`scripts/scrape-runrepeat.ts`)
-Mengambil data spesifikasi lab dari halaman review RunRepeat, melakukan klasifikasi kategori otomatis (skor potensi terbesar), dan menyimpannya ke database:
-
-```bash
-# Contoh: Scrape Mizuno Neo Vista
-npx tsx scripts/scrape-runrepeat.ts https://runrepeat.com/mizuno-neo-vista
-
-# Contoh: Scrape Asics Novablast 4
 npm run scrape https://runrepeat.com/asics-novablast-4
+npx tsx scripts/scrape-runrepeat.ts <url> --dry-run     # fetch + parse + validasi, TANPA tulis DB
 ```
 
-### D. Bulk & Catalog Scraper (`scripts/scrape-bulk.ts`)
-
-Mendukung pengambilan banyak sepatu sekaligus, baik melalui daftar URL maupun **ekstraksi otomatis dari halaman katalog RunRepeat**:
+### Scraper bulk
 
 ```bash
-# 1. Scraping Otomatis dari Halaman Katalog RunRepeat (Rekomendasi):
-npx tsx scripts/scrape-bulk.ts --catalog https://runrepeat.com/catalog/running-shoes --limit 10
+# a. Beberapa URL langsung
+npx tsx scripts/scrape-bulk.ts https://runrepeat.com/asics-novablast-4 https://runrepeat.com/hoka-speedgoat-5
 
-# Atau katalog trail:
+# b. Dari file JSON (array string URL, atau objek { url, idOverride?, categoryOverride?, subCategoryOverride? })
+npm run scrape:bulk:file                  # = --file scripts/urls.json
+
+# c. Dari halaman katalog RunRepeat
+npm run scrape:catalog                    # katalog road, limit default 20
 npx tsx scripts/scrape-bulk.ts --catalog https://runrepeat.com/catalog/trail-running-shoes --limit 15
 
-# Shortcut npm:
-npm run scrape:catalog
-
-# 2. Input beberapa link sepatu langsung di terminal:
-npx tsx scripts/scrape-bulk.ts https://runrepeat.com/mizuno-neo-vista-2 https://runrepeat.com/asics-novablast-4
-
-# 3. Dari file daftar URL (scripts/urls.json):
-npm run scrape:bulk:file
-
-# 4. Preview link tanpa menyimpan ke database (Dry Run):
-npx tsx scripts/scrape-bulk.ts --catalog https://runrepeat.com/catalog/running-shoes --limit 5 --dry-run
+# d. Re-scrape semua baris yang sudah ada di DB (pakai source_url & id lama → id stabil)
+npm run scrape:fix -- --dry-run --report scripts/report.json   # uji dulu
+npm run scrape:fix -- --report scripts/report-fix.json         # tulis ke DB
 ```
 
-**Daftar Opsi CLI:**
 | Opsi | Default | Keterangan |
 |---|---|---|
-| `--catalog <url>` | — | URL halaman katalog RunRepeat untuk diekstrak otomatis link sepatunya |
-| `--limit <n>` | `20` | Jumlah maksimal sepatu yang diambil dari halaman katalog |
-| `--file <path>` | — | Path ke file JSON berisi daftar URL |
-| `--concurrency <n>` | `2` | Jumlah request scraping paralel bersamaan |
-| `--delay <ms>` | `3000` | Jeda antar request dalam milidetik (hindari rate-limit Cloudflare) |
-| `--dry-run` | off | Hanya tampilkan daftar URL yang ditemukan tanpa scraping ke database |
+| `--file <path>` | — | File JSON daftar URL |
+| `--catalog <url>` | — | Ekstrak link sepatu dari halaman katalog |
+| `--limit <n>` | `20` | Maks sepatu dari katalog |
+| `--from-db` | off | Muat semua `source_url` dari tabel `shoes` (ikut `TURSO_DATABASE_URL`) |
+| `--concurrency <n>` | `2` | Worker paralel |
+| `--delay <ms>` | `3000` | Jeda tiap worker antar request (hindari rate-limit) |
+| `--dry-run` | off | Fetch + parse + validasi penuh, **tidak menulis DB** |
+| `--report <file>` | — | Tulis hasil per URL (`success` / `needs_review` / `failed`) ke JSON; folder dibuat otomatis |
+
+Exit code `1` hanya bila **semua** job gagal. Sepatu `needs_review` tidak membuat exit code 1 — periksa ringkasan / report.
+
+**Selalu `cp data/shoes.db data/shoes.db.bak` (atau snapshot Turso) sebelum menulis ke DB.**
 
 ---
 
-## 2. Cara Membaca & Memahami Script (`scripts/scrape-runrepeat.ts`)
-
-Alur kerja script dibagi menjadi 6 tahap terstruktur:
+## 2. Alur Scraper
 
 ```
-[ URL RunRepeat ]
-       │
-       ▼
-1. HTTP Fetch (Cheerio + Browser Headers)
-       │
-       ▼
-2. Ekstraksi Identitas (Brand, Model, Slug ID)
-       │
-       ▼
-3. Ekstraksi Metrik Lab (Weight, Drop, Heel/Forefoot Stack)
-       │
-       ▼
-4. Ekstraksi Review Kualitatif (Verdict, Pros, Cons, Image)
-       │
-       ▼
-5. Normalisasi & Validasi Skema (Zod Schema)
-       │
-       ▼
-6. Penyimpanan / Upsert Database (Drizzle ORM)
+URL RunRepeat
+  │ 1. fetchHtml          fetch + User-Agent browser, timeout 30 dtk, retry 3x (404 tidak di-retry)
+  ▼
+  │ 2. parseRunRepeatHtml (lib/runrepeat-parser.ts)   — murni, tanpa network/DB
+  │      · brand/model    → lib/brands.ts (splitBrandModel)
+  │      · spec lab       → kolom PERTAMA tabel perbandingan (bukan sepatu mirip)
+  │      · fakta          → blok .rr_facts__name (terrain, release date, material, …)
+  │      · plat, busa     → deteksi per kalimat / per brand
+  │      · fit, breathability → lib/classify-fit.ts
+  ▼
+  │ 3. buildShoeFromPage  — spec wajib kosong → NeedsReviewError (tanpa default diam-diam)
+  │      · classifyShoe (lib/classify-shoe.ts) → category, subCategory, terrain, pace
+  ▼
+  │ 4. RunningShoeSchema (Zod, src/schemas/shoe.schema.ts) — gagal → NeedsReviewError
+  ▼
+  │ 5. upsert Drizzle (onConflictDoUpdate target shoes.id) — kecuali --dry-run
 ```
 
-### Penjelasan Blok Kode Kunci:
+`id` = `slugify(judul halaman)`. Re-scrape lewat `--from-db` meneruskan `idOverride` sehingga id tidak berubah.
 
-#### 1. Header Penyamaran Browser
-```typescript
-const response = await fetch(url, {
-  headers: {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)...",
-    "Accept-Language": "en-US,en;q=0.9",
-  },
-});
-```
-*Mengapa ini penting?* RunRepeat memiliki proteksi bot. Tanpa header `User-Agent` browser asli, request akan langsung diblokir dengan kode `403 Forbidden`.
-
-#### 2. Konversi Satuan Berat (Ounce ke Gram)
-```typescript
-const weightText = findMetric(["Weight", "weight"]);
-const weightMatch = weightText.match(/(\d+)\s*g/i) || weightText.match(/(\d+(?:\.\d+)?)\s*oz/i);
-if (weightText.includes("oz") && !weightText.includes("g")) {
-  weightGrams = Math.round(parseFloat(weightMatch[1]) * 28.3495);
-}
-```
-*Penjelasan:* RunRepeat menyajikan berat dalam dua format: gram (`260g`) atau ounce (`9.2 oz`). Script menggunakan regex untuk menangkap angka dan mengonversi `1 oz = 28.3495 g` jika teks hanya menyajikan ounce.
-
-#### 3. Mesin Klasifikasi Kategori Otomatis (Scoring Engine)
-```typescript
-const classified = classifyShoe({
-  brand, model, fullText, verdictSummary, pros, cons,
-  heelStackMm, weightGrams, dropMm, hasCarbonPlate, hasNylonPlate, hasPlate
-});
-// Hasil:
-// category: "super_trainer"   (Skor Tertinggi - Potensi Terbesar)
-// subCategory: "max_cushion"   (Skor Kedua Tertinggi)
-// terrain: "road"              (Atau "soft_ground" / "multi_ground" untuk trail)
-```
-*Penjelasan:*
-Alih-alih pencocokan statis kaku, fungsi `classifyShoe` menghitung bobot skor relevansi ke seluruh 26 kategori resmi di `docs/running-shoe-categories-guide.md`:
-- Menguji sinyal teks (kata kunci "super trainer", "daily workhorse", "long run", "tempo", dll).
-- Menguji spesifikasi teknis (keberadaan pelat karbon vs nilon, busa super PEBA, ketebalan *heel stack*, bobot sepatu).
-- Kategori dengan bobot tertinggi terpilih sebagai `category` (primer).
-- Kategori tertinggi kedua terpilih sebagai `sub_category` (sekunder).
-- Contoh nyata **Mizuno Neo Vista 2**: memiliki wave plate, busa lembut Enerzy NXT, dan stack tinggi (44.5mm). Hasil penilaian menempatkannya sebagai `super_trainer` (primer) dan `max_cushion` / `long_run` (sekunder).
-
-#### 4. Validasi Ketat Menggunakan Zod
-```typescript
-const validated = RunningShoeSchema.parse(shoeData);
-```
-*Penjelasan:* Sebelum data dimasukkan ke database, Zod memastikan tidak ada angka minus pada berat/drop, URL valid, dan enum kategori sesuai kontrak sistem. Jika ada data rusak, proses berhenti dan memberi tahu baris mana yang salah.
-
-#### 5. Upsert (Insert or Update on Conflict)
-```typescript
-await db.insert(shoes).values(dbRecord).onConflictDoUpdate({
-  target: shoes.id,
-  set: dbRecord,
-});
-```
-*Penjelasan:* Jika ID sepatu (slug) sudah ada di database, script tidak akan membuat data duplikat, melainkan memperbarui (*update*) data spesifikasi terbaru.
+### Status hasil
+- **success** — tersimpan (atau lolos validasi bila dry-run).
+- **needs_review** — halaman terambil tapi data tidak lengkap/tak masuk akal: brand tak dikenal, berat/drop/stack tidak ketemu, atau di luar `SPEC_LIMITS`. **Tidak masuk DB.**
+- **failed** — gagal jaringan / HTTP (mis. 404).
 
 ---
 
-## 3. Hal-Hal yang Perlu Diperhatikan
+## 3. Definisi Data Sendiri
 
-1. **Proteksi Cloudflare / Rate Limiting**:
-   - Jangan menjalankan scraper dalam loop ratusan URL secara bersamaan tanpa jeda (*delay*).
-   - Berikan jeda minimal 2–5 detik antar request untuk menghindari pemblokiran IP.
-2. **Perubahan DOM / Class HTML RunRepeat**:
-   - RunRepeat secara berkala memperbarui desain antarmuka mereka.
-   - Jika scraper mengembalikan nilai `0` atau `null`, periksa selector CSS di fungsi `findMetric()` dan pastikan teks elemen target belum berganti.
-3. **Koneksi Database Target**:
-   - Jika variabel `TURSO_DATABASE_URL` diatur di `.env`, script akan langsung memasukkan data ke database cloud Turso.
-   - Jika kosong, script otomatis menyimpan data ke file lokal `data/shoes.db`.
+### 3.1 Brand vs model (`lib/brands.ts`)
+Daftar brand kanonik + alias (`BRANDS`). Judul dipecah dengan **awalan terpanjang** yang cocok, sehingga brand 2+ kata utuh:
+
+| Judul | brand | model |
+|---|---|---|
+| New Balance Fresh Foam X 1080v13 | `New Balance` | `Fresh Foam X 1080v13` |
+| Under Armour Velociti Elite 2 | `Under Armour` | `Velociti Elite 2` |
+| Hoka One One Clifton 8 | `HOKA` | `Clifton 8` |
+
+Urutan fallback: daftar brand → fakta "Brand:" di halaman (bila judul diawali nama itu) → **`needs_review`** (tidak pernah menebak kata pertama). **Brand baru → tambahkan ke `BRANDS`.** Nama kanonik disimpan konsisten (`ASICS`, `HOKA`, `New Balance`).
+
+### 3.2 Sizing (`lib/classify-fit.ts`)
+Dua sumbu, lalu digabung ke satu nilai `sizing`:
+
+- **`lengthFit`** (panjang) — voting pembeli RunRepeat. Teks voting ("fits true to size / slightly small / …") dipakai lebih dulu, posisi bar `.this-shoe` sebagai cadangan. Voting `< MIN_FIT_VOTES` (20) → `unknown`. "Slightly small/large" dihitung `runs_small` / `runs_large`.
+- **`widthFit`** (lebar) — baris lab "Width / fit" (utama), lalu "Toebox width": `narrow` / `standard` (Medium/Normal) / `wide`.
+- **`sizing`** (prioritas): length menyimpang → `runs_small`/`runs_large`; else width `narrow`/`wide`; else length pas → `true_to_size`; else `unknown`. Jadi `true_to_size` = panjang pas **dan** lebar standar.
+
+### 3.3 Breathability — adem/panas (`lib/classify-fit.ts`)
+Konteks: sirkulasi udara bahan upper. Prioritas bukti: **label lab** ("Breathable"/"Moderate"/"Warm") → **skor lama 1–5** (≥4 cool, 3 moderate, ≤2 warm) → **kata kunci upper** (Gore-Tex/waterproof/membrane → `warm`; mesh/knit/perforated → `cool`). Hasil: `cool` (adem), `moderate`, `warm` (panas), `unknown`. Bahan upper dari fakta "Material" disimpan di `upperMaterial`.
+
+Semua ambang & aturan ada di satu file (`classify-fit.ts`) — ubah di sana, lalu re-scrape (`npm run scrape:fix`).
+
+### 3.4 Kategori (`lib/classify-shoe.ts`)
+Skor ke semua kategori di `ShoeCategoryEnum` (30 kategori; panduan di `docs/running-shoe-categories-guide.md`) memakai sinyal terstruktur (terrain, pace, type), spesifikasi (plat, stack, bobot) dan teks verdict. Skor tertinggi = `category`, kedua = `subCategory` (bila skor > 15).
 
 ---
 
-## Perbaikan Scraper & Audit Data (v2)
+## 4. Skema Kolom Terkait Scraper
 
-Scraper lama salah ekstrak (berat acak, spec default 265g/8/36/28, plat "Carbon Fiber" di hampir semua sepatu). Versi baru:
+Selain spesifikasi lab, tabel `shoes` memiliki: `sizing`, `length_fit`, `width_fit`, `fit_votes`, `breathability`, `upper_material`. **Setelah menarik kode ini, jalankan `npm run db:push` sebelum aplikasi/scraper dipakai pada DB lama** — tanpa kolom baru, query `select *` Drizzle gagal dan `shoe.service.ts` diam-diam memakai dataset fallback statis. Baris lama memiliki nilai `unknown` sampai di-re-scrape (`npm run scrape:fix`).
 
-- `scripts/lib/runrepeat-parser.ts` — parser murni: spec lab dari **kolom pertama** tabel perbandingan RunRepeat, fakta (terrain, release date) dari blok `rr_facts__name`, plat dideteksi **per kalimat** (negasi/perbandingan diabaikan), busa dicocokkan per brand.
-- `scripts/lib/classify-shoe.ts` — klasifikasi kategori, kini memakai fakta terstruktur (terrain, pace, type) bukan seluruh HTML.
-- Tanpa default diam-diam: spec wajib tak ketemu / di luar batas (`SPEC_LIMITS` di `src/schemas/shoe.schema.ts`) → `needs_review`, tidak masuk DB.
-- `releaseYear` kosong disimpan sebagai `0` (= tidak diketahui; kolom NOT NULL).
+`releaseYear` kosong disimpan `0` (kolom NOT NULL; `0` = tidak diketahui).
 
-### Perintah
+---
+
+## 5. Audit & Test
 
 ```bash
-npm run db:audit                       # cek kualitas DB (read-only, exit 1 bila ada pelanggaran)
-npx tsx scripts/scrape-runrepeat.ts <url> --dry-run     # satu sepatu, tanpa tulis DB
-npx tsx scripts/scrape-bulk.ts --from-db --dry-run --report scripts/report.json   # uji re-scrape semua
-npx tsx scripts/scrape-bulk.ts --from-db --report scripts/report-fix.json         # tulis perbaikan ke DB
-npm run test                           # unit test parser / skema (fixture HTML nyata)
+npm run db:audit        # validasi tiap baris DB dengan RunningShoeSchema yang sama dengan scraper
+npm run test            # vitest: parser, brand, fit/breathability, skema (fixture HTML nyata)
 ```
 
-Selalu `cp data/shoes.db data/shoes.db.bak` sebelum menulis.
+Fixture ada di `scripts/__fixtures__/` (ASICS Novablast 4, HOKA Speedgoat 5). Untuk kasus baru (mis. brand 2 kata, sepatu waterproof) simpan HTML halaman sebagai fixture baru dan tambah assert di `__tests__/`.
+
+---
+
+## 6. Hal yang Perlu Diperhatikan
+
+1. **Rate limit / Cloudflare**: pertahankan `--delay` ≥ 2000 ms dan `--concurrency` kecil.
+2. **Perubahan DOM RunRepeat**: bila banyak `needs_review` mendadak, periksa selector di `lib/runrepeat-parser.ts` (`readComparisonRows`, `readFacts`, `readFitVote`) dengan menjalankan `npm run test` terhadap fixture baru.
+3. **Target DB**: `TURSO_DATABASE_URL` terisi → menulis ke Turso Cloud; kosong → `data/shoes.db`. `.env.local` menimpa `.env`.
+4. **Skema DB tanpa migrasi**: proyek memakai `drizzle-kit push` (folder `drizzle/` tidak ada). Backup DB sebelum push.

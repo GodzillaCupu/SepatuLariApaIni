@@ -6,7 +6,8 @@
  * Dua sumbu terpisah:
  *  - lengthFit (panjang) dari voting pembeli RunRepeat. Ada 5 bar distribusi:
  *      idx 0,1 → runs_small | idx 2 → true_to_size | idx 3,4 → runs_large.
- *    Voting < MIN_FIT_VOTES dianggap tidak cukup → unknown.
+ *    Teks voting ("fits slightly small") dipakai lebih dulu bila ada; "slightly" dihitung sama
+ *    dengan small/large. Voting < MIN_FIT_VOTES dianggap tidak cukup → unknown.
  *  - widthFit (lebar) dari lab: baris "Width / fit" (utama), lalu "Toebox width".
  *      Narrow → narrow | Medium/Average/Standard → standard | Wide → wide.
  * Hasil gabungan `sizing` (yang tampil di UI), urutan prioritas:
@@ -31,8 +32,18 @@ export type WidthFit = "narrow" | "standard" | "wide" | "unknown";
 export type Sizing = "true_to_size" | "narrow" | "wide" | "runs_small" | "runs_large" | "unknown";
 export type Breathability = "cool" | "moderate" | "warm" | "unknown";
 
-export function classifyLengthFit(barIndex: number | null, votes: number | null): LengthFit {
-  if (barIndex === null || votes === null || votes < MIN_FIT_VOTES) return "unknown";
+export function classifyLengthFit(
+  barIndex: number | null,
+  votes: number | null,
+  label: string | null = null
+): LengthFit {
+  if (votes === null || votes < MIN_FIT_VOTES) return "unknown";
+  // Teks voting ("true to size", "slightly small", "large") lebih akurat dari posisi bar.
+  const t = (label ?? "").toLowerCase();
+  if (/true to size/.test(t)) return "true_to_size";
+  if (/small/.test(t)) return "runs_small";
+  if (/large|big/.test(t)) return "runs_large";
+  if (barIndex === null) return "unknown";
   if (barIndex <= 1) return "runs_small";
   if (barIndex === 2) return "true_to_size";
   return "runs_large";

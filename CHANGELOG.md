@@ -6,6 +6,18 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 
 ## [Unreleased]
 
+### Added (fit, breathability, brand)
+- `scripts/lib/brands.ts`: daftar brand kanonik + alias; judul dipecah dengan awalan terpanjang (fix "New Balance" → brand `New`). Brand tak dikenal → `needs_review`.
+- `scripts/lib/classify-fit.ts`: definisi sendiri `sizing` (true_to_size/narrow/wide/runs_small/runs_large) dan `breathability` (cool/moderate/warm). Kolom DB baru: `sizing`, `length_fit`, `width_fit`, `fit_votes`, `breathability`, `upper_material` (perlu `npm run db:push`).
+- API `GET /api/shoes` menerima `sizing` & `breathability`; filter `brand` kini case-insensitive.
+- UI: badge fit/adem-panas di kartu & modal, filter chip di halaman utama.
+- Test: `scripts/__tests__/fit-brand.test.ts`.
+
+### Changed
+- Nama brand kanonik: `ASICS`, `HOKA` (fallback dataset disamakan).
+- `scrape-bulk --report` membuat folder tujuan otomatis.
+- Perlu re-scrape (`npm run scrape:fix`) untuk mengisi data fit/breathability & memperbaiki brand lama pada DB.
+
 ### Fixed
 - Scraper RunRepeat: ekstraksi spec lab, deteksi plat per kalimat, klasifikasi dari fakta terstruktur (lihat `scripts/README.md`).
 - Validasi Zod diperketat (batas spec, format pace, heel >= forefoot).
@@ -48,7 +60,8 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 ## 🎯 Target Pengembangan Berikutnya (Next Targets)
 
 ### Milestone 1: Pengayaan Dataset Sepatu (Katalog 30+ Sepatu)
-- [ ] Buat script batch scraping (`scripts/batch-scrape.ts`) untuk memproses daftar URL sepatu terpopuler di Indonesia (Adidas Adizero Boston 12, Adios Pro 3, Hoka Clifton 9, New Balance 1080 v13, Puma Deviate Nitro 2, Brooks Ghost 16, dll).
+- [x] Script batch scraping tersedia: `scripts/scrape-bulk.ts` (argumen URL, `--file`, `--catalog`, `--from-db`, `--dry-run`).
+- [ ] Jalankan batch untuk daftar URL sepatu terpopuler di Indonesia (Adidas Adizero Boston 12, Adios Pro 3, Hoka Clifton 9, New Balance 1080 v13, Puma Deviate Nitro 2, Brooks Ghost 16, dll).
 - [ ] Verifikasi ketepatan nilai gram dan drop mm pada database setelah scraping massal.
 
 ### Milestone 2: Fitur Komparasi Sepatu (Side-by-Side Comparison)
@@ -72,12 +85,7 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 
 -> update selanjut-nya :
 1. thumbnail photo + photo product di page nya.
-
-2. cari algoritma untuk menandai nama brand (opsi 1)
-3. buat brand jadi identitas sendiri table sendiri (tidak string) (opsi 2)
-4. buat fitur menu road dan trail.
-5. buat scraping datanya bisa lebih akurat.
-
-data yang di perlukan : 
--> definisi true size (patokan width dan long) -> di turunin jadi narrow / wide.
--> definisi dari adem / pans
+2. ~~algoritma menandai nama brand (opsi 1)~~ — selesai (`scripts/lib/brands.ts`).
+3. brand jadi tabel sendiri (bukan string) (opsi 2) — belum; sementara brand = string kanonik dari `BRANDS`.
+4. fitur menu road dan trail.
+5. scraping lebih akurat — sebagian: definisi sizing & breathability selesai; tinggal ambang lebar dari angka mm lab, validasi dengan lebih banyak sampel, dan backfill DB (`db:push` + `scrape:fix`).

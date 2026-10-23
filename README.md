@@ -31,7 +31,9 @@ Pasar sepatu lari saat ini dibanjiri oleh puluhan jenis busa (*ZoomX, FF Blast+,
    - 🟠 **Tempo / Speed**: Sepatu ringan & responsif untuk lari interval / fartlek (misal: *Saucony Endorphin Speed 4*).
    - 🔴 **Race Day**: Sepatu super dengan pelat karbon untuk mengejar *Personal Best* (misal: *Nike Vaporfly 3*).
    - 🟣 **Trail Running**: Sepatu berpaku/lug kokoh untuk medan alam bebas (misal: *Hoka Speedgoat 5*).
-3. Daftar sepatu akan otomatis tersaring seketika (0 ms).
+   - Aplikasi memakai sekitar 30 kategori terperinci (super shoes, stability, trail, dst.); daftar lengkap di [`docs/running-shoe-categories-guide.md`](docs/running-shoe-categories-guide.md).
+3. Persempit dengan filter **Fit** (true to size / sempit / lebar / ukuran kecil / besar) dan **Adem / Panas**.
+4. Daftar sepatu akan otomatis tersaring seketika (0 ms).
 
 ### Skenario 2: Mengecek Spesifikasi Lab di Toko Sepatu
 1. Ketik nama sepatu di kolom pencarian (misal: ketik `novablast` atau `pegasus`).
@@ -40,6 +42,7 @@ Pasar sepatu lari saat ini dibanjiri oleh puluhan jenis busa (*ZoomX, FF Blast+,
    - **Target Pace**: Menunjukkan di rentang kecepatan berapa sepatu ini bekerja optimal (misal: `5:00 - 6:30 min/km`).
    - **Heel-to-Toe Drop**: Beda ketebalan tumit vs ujung kaki.
    - **Tebal Stack (Tumit/Depan)**: Menentukan seberapa tebal busa melindungi kaki dari impak aspal.
+   - **Fit & Adem/Panas**: apakah sepatu pas ukuran, sempit/lebar, dan seberapa berventilasi upper-nya.
    - **Kelebihan & Kekurangan**: Poin ringkas apakah sepatu terlalu hangat, licin di jalan basah, atau sempit di jari.
 
 ### Skenario 3: Penggunaan Tanpa Internet (Offline Mode)
@@ -52,6 +55,7 @@ Pasar sepatu lari saat ini dibanjiri oleh puluhan jenis busa (*ZoomX, FF Blast+,
 
 - 📱 **Mobile-First & PWA**: Terasa seperti aplikasi iOS/Android native tanpa perlu download dari App Store.
 - ⚡ **Pencarian Real-Time**: Pencarian lokal dengan latensi 0 ms.
+- 👟 **Fit & Kenyamanan**: badge *True to size / Sempit / Lebar* dan *Adem / Sedang / Panas* (sirkulasi udara upper) beserta filternya.
 - 🧪 **Spesifikasi Terstandarisasi Lab**: Data bersumber dari pengujian laboratorium independen (RunRepeat), bukan klaim iklan pabrik.
 - 💸 **Nol Biaya Operasional**: Didesain berjalan di tier gratis (Next.js di Vercel Hobby + Turso Serverless SQLite).
 
@@ -101,14 +105,25 @@ npm run db:push
 npm run db:seed
 
 # 4. (Opsional) Ambil data sepatu otomatis dari RunRepeat
-# - Ambil dari halaman katalog:
+# - Uji dulu tanpa menulis DB:
+npx tsx scripts/scrape-runrepeat.ts https://runrepeat.com/asics-novablast-4 --dry-run
+# - Ambil dari halaman katalog / daftar URL / per sepatu:
 npm run scrape:catalog
-# - Atau ambil per sepatu tertentu:
+npm run scrape:bulk:file
 npm run scrape https://runrepeat.com/mizuno-neo-vista
+# - Perbarui semua baris yang sudah ada (backup DB dulu):
+npm run scrape:fix
 
-# 5. Jalankan server pengembangan lokal
+# 5. Audit kualitas data & jalankan unit test
+npm run db:audit
+npm run test
+
+# 6. Jalankan server pengembangan lokal
 npm run dev
 ```
+
+> Detail scraper, definisi sizing/breathability, dan opsi bulk: lihat [`scripts/README.md`](scripts/README.md).
+> Setelah menarik perubahan skema (kolom fit/breathability), jalankan `npm run db:push` **sebelum** membuka aplikasi pada DB lama.
 
 Buka [http://localhost:3000](http://localhost:3000) di browser Anda.
 

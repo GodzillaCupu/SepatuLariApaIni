@@ -113,12 +113,18 @@ function readFacts($: cheerio.CheerioAPI): Map<string, string> {
 }
 
 /** Voting ukuran: "… fits true to size (251 votes)" + indeks bar `.this-shoe` (0-4). */
-function readFitVote($: cheerio.CheerioAPI): { votes: number | null; barIndex: number | null } {
-  const votesMatch = clean($(".size-distribution-text").first().text()).match(/\((\d[\d,]*)\s+votes?\)/i);
+function readFitVote($: cheerio.CheerioAPI): {
+  votes: number | null;
+  barIndex: number | null;
+  label: string | null;
+} {
+  const text = clean($(".size-distribution-text").first().text());
+  const labelMatch = text.match(/\bfits\s+(.+?)\s*\(\d/i);
+  const votesMatch = text.match(/\((\d[\d,]*)\s+votes?\)/i);
   const votes = votesMatch ? parseInt(votesMatch[1].replace(/,/g, ""), 10) : null;
   const bars = $(".size-distribution-container .size-distribution-bar");
   const idx = bars.toArray().findIndex((el) => $(el).hasClass("this-shoe"));
-  return { votes, barIndex: idx >= 0 ? idx : null };
+  return { votes, barIndex: idx >= 0 ? idx : null, label: labelMatch ? labelMatch[1] : null };
 }
 
 /** Kalimat yang membahas plat TAPI bukan klaim bahwa sepatu ini memilikinya. */
@@ -252,8 +258,8 @@ export function parseRunRepeatHtml(html: string): ParsedPage {
   });
   imageUrl = imageUrl ?? $("meta[property='og:image']").attr("content") ?? null;
 
-  const { votes: fitVotes, barIndex } = readFitVote($);
-  const lengthFit = classifyLengthFit(barIndex, fitVotes);
+  const { votes: fitVotes, barIndex, label: fitLabel } = readFitVote($);
+  const lengthFit = classifyLengthFit(barIndex, fitVotes, fitLabel);
   const widthFit = classifyWidthFit(rows.get("width / fit") ?? null, rows.get("toebox width") ?? null);
   const upperMaterial = normalizeUpperMaterial(facts.get("material"));
   const oldScoreMatch = (rows.get("breathability (old method)") ?? "").match(/\b([1-5](?:\.\d)?)\b/);

@@ -45,6 +45,9 @@ describe("sizing", () => {
     expect(classifyLengthFit(4, 100)).toBe("runs_large");
     expect(classifyLengthFit(2, 5)).toBe("unknown");
     expect(classifyLengthFit(null, 100)).toBe("unknown");
+    expect(classifyLengthFit(null, 83, "slightly small")).toBe("runs_small");
+    expect(classifyLengthFit(null, 83, "slightly large")).toBe("runs_large");
+    expect(classifyLengthFit(2, 83, "true to size")).toBe("true_to_size");
   });
   it("width: Width/fit utama, toebox cadangan", () => {
     expect(classifyWidthFit("Narrow", "Medium")).toBe("narrow");

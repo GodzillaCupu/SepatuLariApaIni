@@ -5,6 +5,7 @@
 **Vision:** An open-source, community-driven AI shoe scanner that helps runners identify any running shoe model and instantly understand its intended rotation category (Easy, Tempo, Long Run, Race) backed by lab-tested metrics.  
 **Version:** 1.0.0 (MVP)  
 **Date:** October 2026  
+**Status note:** Dokumen visi awal. Implementasi saat ini berbeda: data berada di database (Drizzle + SQLite/Turso) bukan `data/shoes.json`, fitur AI Vision Scan ditangguhkan, dan skema/status terkini ada di `docs/PROJECT_NOTES.md`, `docs/ARCHITECTURE.md` serta `scripts/README.md`.  
 
 ---
 

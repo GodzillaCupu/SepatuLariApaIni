@@ -40,13 +40,17 @@ flowchart TD
     end
 
     subgraph ScraperCLI["5. Standalone CLI Tool"]
+        Bulk["scripts/scrape-bulk.ts (URL / file / katalog / from-db)"]
         Scraper["scripts/scrape-runrepeat.ts"]
+        Parser["scripts/lib: runrepeat-parser, brands, classify-fit, classify-shoe"]
         ZodValidator["Zod Schema Validator"]
         RunRepeatWeb["RunRepeat Web"]
         
+        Bulk --> Scraper
         Scraper -->|"HTTP GET"| RunRepeatWeb
-        Scraper -->|"Validate"| ZodValidator
-        ZodValidator -->|"Upsert"| Drizzle
+        Scraper -->|"Parse HTML"| Parser
+        Parser -->|"Validate"| ZodValidator
+        ZodValidator -->|"Upsert (kecuali --dry-run)"| Drizzle
     end
 ```
 
@@ -72,13 +76,26 @@ SepatuLariApaIni/
 │   └── shoes.db              # File SQLite lokal saat pengembangan offline
 │
 ├── scripts/                  # Tool CLI Otomasi
-│   ├── scrape-runrepeat.ts   # Scraper halaman lab RunRepeat ke DB
+│   ├── scrape-runrepeat.ts   # Scraper satu halaman RunRepeat (+ --dry-run)
+│   ├── scrape-bulk.ts        # Scraper bulk: URL / --file / --catalog / --from-db
+│   ├── audit-data.ts         # Audit kualitas tabel shoes (read-only)
 │   ├── seed-initial.ts       # Seeder 6 sepatu ikonik awal
 │   ├── test-db-connection.ts # Script diagnostik koneksi & hitung tabel DB
-│   └── README.md             # Panduan pengoperasian scraper & DB scripts
+│   ├── urls.json             # Contoh daftar URL untuk --file
+│   ├── lib/
+│   │   ├── runrepeat-parser.ts # Parser HTML murni
+│   │   ├── brands.ts           # Daftar brand kanonik + splitBrandModel
+│   │   ├── classify-fit.ts     # Definisi sizing & breathability
+│   │   └── classify-shoe.ts    # Klasifikasi kategori (30 kategori)
+│   ├── __tests__/            # Unit test vitest
+│   ├── __fixtures__/         # HTML fixture RunRepeat
+│   └── README.md             # Panduan scraper, definisi data, bulk mode
 │
-├── docs/                     # Dokumentasi Arsitektur & Rencana
-│   └── ARCHITECTURE.md       # (Dokumen ini)
+├── docs/                     # Dokumentasi
+│   ├── ARCHITECTURE.md       # (Dokumen ini)
+│   ├── PRD.md                # Visi produk awal (sebagian belum dikerjakan)
+│   ├── PROJECT_NOTES.md      # Status & patokan pengerjaan
+│   └── running-shoe-categories-guide.md # Panduan kategori sepatu
 │
 └── src/
     ├── types/                # Kontrak Tipe Data TypeScript
@@ -97,10 +114,15 @@ SepatuLariApaIni/
     ├── services/             # Lapisan Bisnis & Database Query
     │   └── shoe.service.ts   # getShoes(), getShoeById(), fallback logic
     │
+    ├── constants/
+    │   ├── categories.ts     # Metadata kategori (label, warna, deskripsi)
+    │   └── fit.ts            # Label & warna badge sizing / breathability
+    │
     ├── components/           # Komponen UI React (Client Components)
     │   ├── Navbar.tsx        # Header dengan indikator status online/offline
     │   ├── RotationFilter.tsx# Tombol filter kategori scrollable
     │   ├── ShoeCard.tsx      # Kartu ringkasan spesifikasi lab
+    │   ├── FitBadges.tsx     # Badge fit & adem/panas
     │   └── ShoeDetailModal.tsx # Bottom sheet detail specs & pros/cons
     │
     └── app/                  # Next.js App Router Layer
@@ -124,7 +146,7 @@ SepatuLariApaIni/
 ### A. Next.js App Router & REST API
 - `src/app/page.tsx` bertindak sebagai *Client Component* (`"use client"`).
 - Pada saat komponen dimuat pertama kali (`useEffect`), aplikasi memanggil `fetch('/api/shoes')`.
-- API endpoint (`src/app/api/shoes/route.ts`) berjalan di lingkungan serverless. Endpoint ini menerima query parameter (seperti `?category=daily_trainer` atau `?search=novablast`) dan mendelegasikannya ke `shoe.service.ts`.
+- API endpoint (`src/app/api/shoes/route.ts`) berjalan di lingkungan serverless. Endpoint ini menerima query parameter (seperti `?category=daily_trainer`, `?search=novablast`, `?sizing=true_to_size`, `?breathability=cool`) dan mendelegasikannya ke `shoe.service.ts`.
 
 ### B. Business Service & Drizzle ORM
 - `shoe.service.ts` tidak menulis query string mentah, melainkan menggunakan Drizzle query builder:
@@ -141,7 +163,12 @@ SepatuLariApaIni/
   - **SQLite Lokal (Offline)**: URL berformat `file:./data/shoes.db`, driver secara otomatis melakukan I/O langsung ke file lokal tanpa memerlukan internet.
 - Skema tabel disinkronkan ke cloud atau lokal menggunakan `npm run db:push`, dan diverifikasi statusnya via `npm run db:check`.
 
-### D. PWA & Service Worker (`@ducanh2912/next-pwa`)
+### D. Scraper & Definisi Data
+- Parser (`scripts/lib/runrepeat-parser.ts`) bersifat murni (HTML → objek) sehingga dapat dites dengan fixture. Brand/model dipisah oleh `brands.ts`; sizing & breathability oleh `classify-fit.ts`; kategori oleh `classify-shoe.ts`.
+- Data yang tidak lengkap atau tidak lolos Zod → `NeedsReviewError` (tidak masuk DB). Detail: `scripts/README.md`.
+- Penambahan kolom di `src/db/schema.ts` diterapkan dengan `npm run db:push` (tidak ada folder migrasi). Kode yang membaca kolom baru pada DB lama akan jatuh ke dataset fallback sampai skema di-push.
+
+### E. PWA & Service Worker (`@ducanh2912/next-pwa`)
 - Konfigurasi diatur dalam `next.config.mjs`.
 - Saat build (`npm run build`), Workbox mengompilasi `public/sw.js`.
 - Service worker memotong (*intercept*) request jaringan:

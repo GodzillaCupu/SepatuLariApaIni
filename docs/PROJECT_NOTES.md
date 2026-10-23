@@ -13,24 +13,31 @@ Status Implementasi:
 2. [x] **Resilience Layer**: Fallback dataset statis (`src/data/fallback-shoes.ts`) menjamin zero-downtime jika DB unreachable.
 3. [x] **REST API**: Endpoint Next.js App Router (`/api/shoes`, `/api/shoes/[id]`, `/api/shoes/categories`) aktif.
 4. [x] **PWA Integration**: Service Worker (`@ducanh2912/next-pwa`), manifest, offline banner terpasang.
-5. [x] **Frontend UI**: Katalog mobile-first, filter rotasi, real-time search, bottom sheet modal lab specs.
-6. [ ] **Pengayaan Data**: Batch scraping 30+ sepatu populer tambahan.
+5. [x] **Frontend UI**: Katalog mobile-first, filter rotasi, real-time search, bottom sheet modal lab specs, badge & filter fit / adem-panas.
+6. [x] **Scraper v2**: parser murni (`scripts/lib/`), pemisahan brand/model berbasis daftar brand, definisi sizing & breathability, mode bulk (`--file`, `--catalog`, `--from-db`, `--dry-run`), audit (`npm run db:audit`) dan unit test (`npm run test`).
+7. [ ] **Backfill DB**: `npm run db:push` (kolom fit/breathability) lalu `npm run scrape:fix` untuk data lama.
+8. [ ] **Pengayaan Data**: Batch scraping 30+ sepatu populer tambahan.
 
 ---
 
 ## 2. Struktur Data & Schema
 
-### 2.1 File Master
-- Path: `data/shoes.json`
-- Schema Validator: `src/schemas/shoe.schema.ts` (Zod)
-- Type Definition: `src/types/shoe.ts`
+### 2.1 Sumber Data & Kontrak
+- Database: tabel `shoes` (`src/db/schema.ts`, Drizzle) di SQLite lokal `data/shoes.db` / Turso. Bukan file JSON.
+- Validator: `src/schemas/shoe.schema.ts` (Zod) — dipakai scraper & audit.
+- Tipe: `src/types/index.ts`.
+- Fallback statis bila DB tak terjangkau: `src/data/fallback-shoes.ts`.
+- Data masuk lewat scraper RunRepeat (`scripts/`, lihat `scripts/README.md`).
 
-### 2.2 Kategori Rotasi (Badge)
-- `daily_trainer`: Sepatu harian serbaguna, durabilitas tinggi.
-- `max_cushion`: Bantalan tebal untuk recovery run dan lari santai jarak jauh.
-- `tempo_speed`: Responsif, ringan, cocok untuk interval / fartlek / tempo.
-- `race_day`: Busa PEBA super responsive + plat karbon/nylon untuk race.
-- `trail`: Outsole grippy, proteksi kaki untuk medan tanah/bebatuan.
+### 2.2 Kategori
+- 30 kategori di `ShoeCategoryEnum` (road: super_shoes, super_trainer, race_*, speed_tempo, daily_trainer, max_cushion, stability, …; trail: trail_*). Metadata label/warna: `src/constants/categories.ts`; panduan: `docs/running-shoe-categories-guide.md`.
+- Lima badge rotasi awal (daily_trainer, max_cushion, tempo/speed, race, trail) tetap menjadi mental model utama di UI.
+
+### 2.2b Fit & Breathability
+- `sizing`: `true_to_size | narrow | wide | runs_small | runs_large | unknown`
+- `breathability`: `cool (adem) | moderate | warm (panas) | unknown`
+- Definisi & ambang: `scripts/lib/classify-fit.ts`; label UI: `src/constants/fit.ts`.
+- Brand kanonik: `scripts/lib/brands.ts` (brand baru wajib didaftarkan, kalau tidak → `needs_review`).
 
 ### 2.3 Kontrak Data Sepatu (RunningShoe)
 ```typescript
@@ -39,12 +46,20 @@ interface RunningShoe {
   brand: string;
   model: string;
   releaseYear: number;
-  category: "daily_trainer" | "max_cushion" | "tempo_speed" | "race_day" | "trail";
+  category: ShoeCategory; // 30 nilai, lihat src/types/index.ts
   primaryUse: string;
   secondaryUse?: string;
   targetPaceRange: string; // Format: "5:00 - 7:00 min/km"
   runnerType: "Neutral" | "Mild Stability" | "Stability";
   surface: "Road" | "Trail" | "All-Terrain";
+  subCategory?: string | null;
+  terrain?: string | null;
+  sizing?: "true_to_size" | "narrow" | "wide" | "runs_small" | "runs_large" | "unknown";
+  lengthFit?: "runs_small" | "true_to_size" | "runs_large" | "unknown";
+  widthFit?: "narrow" | "standard" | "wide" | "unknown";
+  fitVotes?: number | null;
+  breathability?: "cool" | "moderate" | "warm" | "unknown";
+  upperMaterial?: string | null;
   specs: {
     weightGrams: number;
     dropMm: number;
@@ -59,8 +74,8 @@ interface RunningShoe {
     pros: string[];
     cons: string[];
   };
-  imageUrl?: string;
-  runRepeatUrl?: string;
+  imageUrl?: string | null;
+  sourceUrl: string; // halaman RunRepeat
 }
 ```
 
@@ -72,7 +87,7 @@ Base URL: `/api`
 
 | Method | Endpoint | Deskripsi | Query Parameters |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/shoes` | List sepatu dengan filter dan search | `category`, `brand`, `search`, `limit`, `offset` |
+| `GET` | `/api/shoes` | List sepatu dengan filter dan search | `category`, `brand` (case-insensitive), `sizing`, `breathability`, `search`, `limit` |
 | `GET` | `/api/shoes/:id` | Detail spesifik sepatu berdasarkan slug ID | - |
 | `GET` | `/api/shoes/categories` | Daftar metadata kategori rotasi & deskripsi | - |
 
@@ -86,8 +101,7 @@ Caching Headers:
 
 - **Framework**: Next.js 14+ (App Router), React, TypeScript, Tailwind CSS.
 - **PWA Module**: `@ducanh2912/next-pwa` atau `@serwist/next`.
-- **Offline Storage**: Cache API untuk file statis + IndexedDB (`idb-keyval`) untuk data JSON katalog.
-- **Client Cache**: TanStack Query (React Query) / SWR.
+- **Offline**: Service Worker (Workbox) men-cache aset & respons `/api/shoes`. Rencana IndexedDB / TanStack Query belum dikerjakan.
 
 ---
 
@@ -104,7 +118,6 @@ Caching Headers:
 
 - **Gaya Komunikasi**: Wajib menggunakan skill **caveman** pada setiap sesi chat (terse, teknis langsung tanpa basa-basi).
 - **Prioritas Pengerjaan**:
-  1. Siapkan seed data `data/shoes.json` (20 sepatu populer).
-  2. Tulis validasi Zod & TypeScript type.
-  3. Inisialisasi Next.js app & siapkan API routes.
-  4. Bangun UI mobile-first & integrasikan PWA offline.
+  1. Backfill DB: `db:push` + `scrape:fix` (setelah backup).
+  2. Perkaya dataset (30+ sepatu) via `scrape-bulk`.
+  3. Foto/thumbnail produk, menu road/trail, brand sebagai tabel (lihat `CHANGELOG.md`).

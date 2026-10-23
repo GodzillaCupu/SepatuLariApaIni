@@ -362,7 +362,9 @@ Opsi:
     console.log(`   ❌ Gagal:    ${failed}/${urls.length}`);
   }
   if (reportPath) {
-    fs.writeFileSync(path.resolve(process.cwd(), reportPath), JSON.stringify(results, null, 2));
+    const reportFile = path.resolve(process.cwd(), reportPath);
+    fs.mkdirSync(path.dirname(reportFile), { recursive: true });
+    fs.writeFileSync(reportFile, JSON.stringify(results, null, 2));
     console.log(`   📝 Laporan: ${reportPath}`);
   }
   printSeparator();
