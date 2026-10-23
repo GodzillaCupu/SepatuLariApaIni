@@ -6,7 +6,7 @@
 
 ## 1. Fokus Tahap Saat Ini (Current Phase)
 
-Fitur **AI Vision Scan DITANGGUHKAN** sementara hingga ada instruksi eksplisit untuk melanjutkan.
+Fokus: perkaya dataset, uji live **AI Vision Scan** dengan key Gemini asli, dan rapikan kualitas data (`release_year`). Fitur banding sepatu dan AI Vision Scan sudah diimplementasikan (BYOK default).
 
 Status Implementasi:
 1. [x] **Database & ORM**: Drizzle ORM dengan LibSQL Client terintegrasi ganda (Turso Cloud untuk cloud/prod & SQLite file untuk offline). Skema tabel `shoes` ter-push ke Turso; katalog saat ini 57 sepatu.
@@ -20,7 +20,9 @@ Status Implementasi:
 9. [x] **Halaman Panduan** `/panduan` + chip filter kategori / Fit / Breathability.
 10. [x] **Ikon PWA**: icons 192/512 (any + maskable), favicon, apple-icon.
 11. [ ] **Pengayaan Data**: tambah model populer; kategori trail, stability, race pendek masih tipis; 32/57 baris `release_year = 0`.
-12. [ ] **Fitur berikutnya**: perbandingan sepatu, "My Rotation", menu Road/Trail (lihat `CHANGELOG.md`).
+12. [x] **Banding sepatu**: `/bandingkan?ids=a,b` (maks 3), tombol di kartu + bar melayang.
+13. [x] **AI Vision Scan**: `POST /api/detect-shoe` (Gemini 2.5 Flash), BYOK default, key server hanya dev (`docs/adr/ADR-001-ai-vision-scan.md`). Uji live dengan key asli belum dilakukan.
+14. [ ] **Fitur berikutnya**: menu Road/Trail, brand sebagai tabel (lihat `CHANGELOG.md`).
 
 ---
 
@@ -94,10 +96,12 @@ Base URL: `/api`
 | `GET` | `/api/shoes` | List sepatu dengan filter dan search | `category`, `brand` (case-insensitive), `sizing`, `breathability`, `search`, `limit` |
 | `GET` | `/api/shoes/:id` | Detail spesifik sepatu berdasarkan slug ID | - |
 | `GET` | `/api/shoes/categories` | Daftar metadata kategori rotasi & deskripsi | - |
+| `POST` | `/api/detect-shoe` | Identifikasi sepatu dari foto (Gemini) + cocokkan ke katalog | Body JSON `{ image: base64, mimeType }`; header `x-gemini-key` (BYOK). Key server `GEMINI_API_KEY` hanya bila `NODE_ENV != production` |
 
 Caching Headers:
 - `/api/shoes`: `Cache-Control: public, s-maxage=3600, stale-while-revalidate=86400`
 - `/api/shoes/:id`: `Cache-Control: public, s-maxage=86400`
+- `/api/detect-shoe`: `no-store` (POST, tidak di-cache Service Worker; gagal bila offline)
 
 ---
 
@@ -105,8 +109,8 @@ Caching Headers:
 
 - **Framework**: Next.js 14+ (App Router), React, TypeScript, Tailwind CSS.
 - **PWA Module**: `@ducanh2912/next-pwa` (aktif; dinonaktifkan saat `NODE_ENV=development`).
-- **Halaman**: `/` (katalog) dan `/panduan` (panduan filter).
-- **Testing**: vitest (`npm run test`, 48 test lulus: parser, brand, fit/breathability).
+- **Halaman**: `/` (katalog), `/panduan` (panduan filter), `/bandingkan` (banding 2–3 sepatu).
+- **Testing**: vitest (`npm run test`, 75 test lulus: parser, brand, fit/breathability, compare, AI Vision dengan mock `fetch`).
 - **Offline**: Service Worker (Workbox) men-cache aset & respons `/api/shoes`. Rencana IndexedDB / TanStack Query belum dikerjakan.
 
 ---

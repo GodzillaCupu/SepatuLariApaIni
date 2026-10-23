@@ -6,6 +6,16 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 
 ## [Unreleased]
 
+### Added (banding sepatu & AI Vision Scan) — 2026-10-23
+- **Banding sepatu (Milestone 2)**: tombol "Bandingkan" di kartu (maks 3 sepatu) + bar melayang → halaman `/bandingkan?ids=a,b` (`src/app/bandingkan/page.tsx`). Menampilkan bar visual selisih berat/drop/stack (yang paling ringan disorot) dan baris atribut (pelat, busa, bantalan, fit, adem/panas, pace) dengan penanda "beda". Logika murni di `src/lib/compare.ts`.
+- **AI Vision Scan (Milestone 4)**: `POST /api/detect-shoe` → Gemini 2.5 Flash (REST) → fuzzy match ke katalog. **BYOK default** (key di `localStorage`, dikirim via header `x-gemini-key`); key server `GEMINI_API_KEY` hanya dipakai saat `NODE_ENV != production` (uji dev). UI: tombol "Scan sepatu" (kamera/galeri, foto diperkecil di klien) dan modal Pengaturan AI. Lihat `docs/adr/ADR-001-ai-vision-scan.md`.
+- Modul baru: `src/lib/vision/{schema,key,gemini,match-shoe,handler,client}.ts`, `src/lib/text.ts` (`normalizeName`, dipakai juga oleh `scripts/lib/brands.ts`).
+- Test: `src/lib/__tests__/compare.test.ts`, `src/lib/vision/__tests__/vision.test.ts` (mock `fetch`, tanpa memanggil Gemini).
+- `.env.example`: `GEMINI_API_KEY` (khusus development).
+
+### Changed (scraper)
+- Perilaku duplikat **dipertahankan sengaja**: sepatu yang sudah ada di DB **ditimpa** (upsert pada `id`), tidak di-skip, agar data baru ikut masuk. Perhatikan `id` = slug judul halaman, bukan `source_url`.
+
 ### Added (UI, PWA, ops) — 2026-10-23
 - **Foto sepatu**: komponen `ShoeImage` (`next/image`, fallback ikon bila URL kosong/gagal) di kartu & modal detail. Host gambar diizinkan di `next.config.mjs`: `cdn.runrepeat.com`, `runrepeat.com`, `images.unsplash.com`.
 - **Halaman Panduan** `/panduan` (`src/app/panduan/page.tsx`, konten di `src/constants/guide.ts`): tab Kategori Rotasi / Fit / Breathability. Tautan dari halaman utama.
@@ -16,7 +26,7 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 ### Data
 - DB lokal & Turso production: **57 sepatu** (sinkron 2026-10-23; sebelumnya Turso 37 baris tanpa kolom fit/breathability). Backfill `db:push` + `scrape:fix` **selesai**.
 - Sebaran kategori: daily_trainer 24, max_cushion 16, super_shoes 11, super_trainer 3, stability 1, trail_race_long 1, trail_super_shoes 1. Semua baris punya `image_url`.
-- Catatan kualitas: 32 dari 57 baris `release_year = 0` (tahun rilis tidak tersedia di halaman sumber).
+- Catatan kualitas: 32 dari 57 baris `release_year = 0`. Penyebab: fakta "Release date" tidak ada di halaman sepatu lama RunRepeat. Perbaikan ditunda (pemilik proyek punya opsi lain).
 
 ### Added (fit, breathability, brand)
 - `scripts/lib/brands.ts`: daftar brand kanonik + alias; judul dipecah dengan awalan terpanjang (fix "New Balance" → brand `New`). Brand tak dikenal → `needs_review`.
@@ -79,18 +89,19 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 - [ ] Menu terpisah Road vs Trail dan tampilan brand sebagai tabel.
 
 ### Milestone 2: Fitur Komparasi Sepatu (Side-by-Side Comparison)
-- [ ] Buat komponen pembanding 2 sepatu secara berdampingan (contoh: *Novablast 4 vs Pegasus 41*).
-- [ ] Tampilkan perbandingan visual grafis: selisih berat (gram), perbedaan ketebalan bantalan, dan perbedaan jenis pelat.
+- [x] Halaman `/bandingkan?ids=a,b` (2–3 sepatu), dipilih lewat tombol "Bandingkan" di kartu.
+- [x] Perbandingan visual: selisih berat (gram), drop, tebal stack, jenis pelat, busa, bantalan, fit, adem/panas.
+- [ ] Uji tampilan di perangkat nyata dan tambahkan tombol Bandingkan di modal detail (opsional).
 
-### Milestone 3: Rotasi Sepatu Saya ("My Rotation" - PWA Offline)
-- [ ] Fitur penyimpanan sepatu milik pengguna di `localStorage` / `IndexedDB`.
-- [ ] Dashboard rotasi pribadi: menampilkan sepatu apa yang dimiliki user untuk Daily, Tempo, dan Race Day, serta memberikan saran sepatu apa yang masih kurang di rotasi mereka.
+### Milestone 4: AI Vision Scan
+- [x] Rute `POST /api/detect-shoe` (Gemini 2.5 Flash Vision), BYOK default + key server khusus development.
+- [x] Pengaturan AI (modal BYOK) dan lembar Scan (kamera/galeri).
+- [x] Fuzzy matching hasil AI ke tabel `shoes`.
+- [ ] Uji live dengan key Gemini asli & foto nyata; sesuaikan ambang kecocokan (`src/lib/vision/match-shoe.ts`).
 
-### Milestone 4: Re-aktivasi Fitur AI Vision Scan (Saat User Siap)
-- [ ] Pembuatan rute `POST /api/detect-shoe` menggunakan Google Gemini 2.5 Flash Vision.
-- [ ] Fitur BYOK (Bring Your Own Key) via modal pengaturan agar tidak membebani kuota pengembang.
-- [ ] Algoritma *fuzzy matching* dari nama sepatu yang ditebak AI ke database `shoes`.
+---
 
-### Milestone 5: Fitur Komunitas & Pengajuan Sepatu
-- [ ] Form CTA kontribusi jika sepatu yang dicari belum ada di database.
-- [ ] Generator otomatis link GitHub Issue dengan template data spesifikasi siap isi.
+-> update selanjutnya (catatan pemilik proyek):
+1. brand jadi tabel sendiri (bukan string) — belum; sementara brand = string kanonik dari `scripts/lib/brands.ts`.
+2. menu Road dan Trail terpisah.
+3. scraping lebih akurat: ambang lebar dari angka mm lab, perbaikan `release_year`.

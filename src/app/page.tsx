@@ -4,11 +4,18 @@ import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { RotationFilter, CATEGORIES } from "@/components/RotationFilter";
+import { Pagination } from "@/components/Pagination";
 import { ShoeCard } from "@/components/ShoeCard";
 import { ShoeDetailModal } from "@/components/ShoeDetailModal";
+import { ScanShoeSheet } from "@/components/ScanShoeSheet";
+import { AiSettingsModal } from "@/components/AiSettingsModal";
 import { RunningShoe, Sizing, Breathability } from "@/types";
 import { BREATHABILITY_META } from "@/constants/fit";
-import { Search, Loader2, Sparkles, AlertCircle, SlidersHorizontal, ChevronDown, BookOpen } from "lucide-react";
+import { Search, Loader2, Sparkles, AlertCircle, SlidersHorizontal, ChevronDown, BookOpen, GitCompareArrows, X, Camera, KeyRound } from "lucide-react";
+
+const MAX_COMPARE = 3;
+
+const PAGE_SIZE = 20;
 
 type FitFilter = "true_to_size" | "narrow" | "wide";
 
@@ -73,9 +80,18 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [sizingFilter, setSizingFilter] = useState<FitFilter | "">("");
   const [breathFilter, setBreathFilter] = useState<Breathability | "">("");
+  const [page, setPage] = useState(1);
   const [showFilter, setShowFilter] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedShoe, setSelectedShoe] = useState<RunningShoe | null>(null);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [aiSettingsOpen, setAiSettingsOpen] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
+
+  const toggleCompare = (id: string) =>
+    setCompareIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : prev.length >= MAX_COMPARE ? prev : [...prev, id]
+    );
 
   // Fetch initial shoes from REST API
   useEffect(() => {
@@ -118,8 +134,24 @@ export default function HomePage() {
     });
   }, [shoes, selectedCategory, searchQuery, sizingFilter, breathFilter]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredShoes.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedShoes = filteredShoes.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const rangeStart = filteredShoes.length === 0 ? 0 : (currentPage - 1) * PAGE_SIZE + 1;
+  const rangeEnd = Math.min(currentPage * PAGE_SIZE, filteredShoes.length);
+
+  // Filter berubah → balik ke halaman 1
+  useEffect(() => {
+    setPage(1);
+  }, [selectedCategory, searchQuery, sizingFilter, breathFilter]);
+
+  const goToPage = (p: number) => {
+    setPage(p);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
-    <main className="min-h-screen pb-16">
+    <main className={`min-h-screen ${compareIds.length > 0 ? "pb-28" : "pb-16"}`}>
       <Navbar />
 
       <div className="max-w-2xl mx-auto px-4 pt-4 space-y-4">
@@ -135,6 +167,21 @@ export default function HomePage() {
           <p className="text-xs text-slate-300 leading-relaxed">
             Data spesifikasi lab asli (drop, stack height, busa, & pelat) untuk membantu Anda memilih sepatu yang tepat di setiap sesi lari.
           </p>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              onClick={() => setScanOpen(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-white px-3.5 py-2 rounded-full"
+            >
+              <Camera className="w-4 h-4" /> Scan sepatu
+            </button>
+            <button
+              onClick={() => setAiSettingsOpen(true)}
+              aria-label="Pengaturan AI"
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-200"
+            >
+              <KeyRound className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}
@@ -227,6 +274,9 @@ export default function HomePage() {
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs font-bold text-slate-700">
               Daftar Sepatu ({filteredShoes.length})
+              {filteredShoes.length > PAGE_SIZE && (
+                <span className="font-medium text-slate-400"> · Menampilkan {rangeStart}–{rangeEnd}</span>
+              )}
             </p>
             {selectedCategory && (
               <button
@@ -261,17 +311,66 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid gap-3">
-              {filteredShoes.map((shoe) => (
+              {pagedShoes.map((shoe) => (
                 <ShoeCard
                   key={shoe.id}
                   shoe={shoe}
                   onClick={() => setSelectedShoe(shoe)}
+                  compared={compareIds.includes(shoe.id)}
+                  onToggleCompare={() => toggleCompare(shoe.id)}
+                  compareDisabled={compareIds.length >= MAX_COMPARE}
                 />
               ))}
             </div>
           )}
+
+          {!loading && !error && (
+            <Pagination page={currentPage} totalPages={totalPages} onChange={goToPage} />
+          )}
         </div>
       </div>
+
+      {/* Bar Bandingkan */}
+      {compareIds.length > 0 && (
+        <div className="fixed bottom-0 inset-x-0 z-30 p-3 pointer-events-none">
+          <div className="max-w-2xl mx-auto bg-slate-900 text-white rounded-2xl shadow-lg px-3.5 py-2.5 flex items-center gap-3 pointer-events-auto">
+            <GitCompareArrows className="w-4 h-4 text-emerald-400 shrink-0" />
+            <p className="text-xs flex-1 min-w-0 truncate">
+              {compareIds.length} sepatu dipilih
+              <span className="text-slate-400"> (maks {MAX_COMPARE})</span>
+            </p>
+            <button
+              onClick={() => setCompareIds([])}
+              aria-label="Kosongkan pilihan"
+              className="text-slate-400 hover:text-white"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            {compareIds.length >= 2 ? (
+              <Link
+                href={`/bandingkan?ids=${compareIds.join(",")}`}
+                className="text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-white px-3 py-1.5 rounded-full"
+              >
+                Bandingkan
+              </Link>
+            ) : (
+              <span className="text-[11px] text-slate-400">pilih 1 lagi</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <ScanShoeSheet
+        open={scanOpen}
+        shoes={shoes}
+        onClose={() => setScanOpen(false)}
+        onSelectShoe={setSelectedShoe}
+        onOpenSettings={() => {
+          setScanOpen(false);
+          setAiSettingsOpen(true);
+        }}
+      />
+      <AiSettingsModal open={aiSettingsOpen} onClose={() => setAiSettingsOpen(false)} />
 
       {/* Detail Modal */}
       <ShoeDetailModal

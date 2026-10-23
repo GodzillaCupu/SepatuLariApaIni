@@ -1,3 +1,7 @@
+import { normalizeName } from "../../src/lib/text";
+
+export { normalizeName };
+
 /**
  * Daftar brand kanonik + alias. Sumber kebenaran tunggal untuk memisah
  * "brand" dan "model" dari judul halaman (brand bisa lebih dari 1 kata,
@@ -44,13 +48,6 @@ export const BRANDS: BrandDef[] = [
 ];
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
-/** Normalisasi untuk perbandingan: huruf kecil, tanpa tanda baca, spasi tunggal. */
-export const normalizeName = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
 
 /** Alias → regex awalan judul. "Inov-8" cocok dengan "Inov-8", "Inov 8", "Inov8". */
 const MATCHERS: Array<{ name: string; re: RegExp; len: number }> = BRANDS.flatMap((b) =>

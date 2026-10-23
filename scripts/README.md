@@ -81,6 +81,8 @@ URL RunRepeat
   │ 5. upsert Drizzle (onConflictDoUpdate target shoes.id) — kecuali --dry-run
 ```
 
+**Sepatu yang sudah ada di DB ditimpa** (upsert pada `id`, tanpa skip) sehingga data baru ikut masuk; tidak ada pre-check. Catatan: `id` = `slugify(judul halaman)`, bukan `source_url`, jadi judul yang berubah dapat membuat baris baru.
+
 `id` = `slugify(judul halaman)`. Re-scrape lewat `--from-db` meneruskan `idOverride` sehingga id tidak berubah.
 
 ### Status hasil

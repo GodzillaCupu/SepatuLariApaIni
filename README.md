@@ -34,7 +34,8 @@ Pasar sepatu lari saat ini dibanjiri oleh puluhan jenis busa (*ZoomX, FF Blast+,
    - Aplikasi memakai sekitar 30 kategori terperinci (super shoes, stability, trail, dst.); daftar lengkap di [`docs/running-shoe-categories-guide.md`](docs/running-shoe-categories-guide.md).
 3. Persempit dengan filter **Fit** (true to size / sempit / lebar / ukuran kecil / besar) dan **Adem / Panas**.
 4. Daftar sepatu akan otomatis tersaring seketika (0 ms).
-5. Bingung dengan istilahnya? Buka halaman **Panduan** (`/panduan`) untuk arti tiap kategori, sub kategori, Fit, dan Breathability.
+5. Ingin membandingkan? Tekan **Bandingkan** pada 2–3 kartu lalu buka bar di bawah layar. Lupa nama sepatu? Pakai **Scan sepatu** (butuh API key Gemini sendiri, lihat bawah).
+6. Bingung dengan istilahnya? Buka halaman **Panduan** (`/panduan`) untuk arti tiap kategori, sub kategori, Fit, dan Breathability.
 
 ### Skenario 2: Mengecek Spesifikasi Lab di Toko Sepatu
 1. Ketik nama sepatu di kolom pencarian (misal: ketik `novablast` atau `pegasus`).
@@ -57,6 +58,8 @@ Pasar sepatu lari saat ini dibanjiri oleh puluhan jenis busa (*ZoomX, FF Blast+,
 - 📱 **Mobile-First & PWA**: Terasa seperti aplikasi iOS/Android native tanpa perlu download dari App Store.
 - ⚡ **Pencarian Real-Time**: Pencarian lokal dengan latensi 0 ms.
 - 👟 **Fit & Kenyamanan**: badge *True to size / Sempit / Lebar* dan *Adem / Sedang / Panas* (sirkulasi udara upper) beserta filternya.
+- ⚖️ **Banding Sepatu**: pilih 2–3 sepatu, lihat selisih berat, drop, stack, pelat, fit, dan adem/panas side-by-side di `/bandingkan`.
+- 📷 **Scan Sepatu (AI)**: foto sepatu → dikenali Gemini → dicocokkan ke katalog. Memakai API key Gemini milikmu sendiri (BYOK), diisi di Pengaturan AI; tidak jalan offline.
 - 🖼️ **Foto Produk & Panduan Filter**: thumbnail di kartu dan modal (fallback ikon bila gagal), plus halaman `/panduan` yang menjelaskan semua kategori & filter.
 - 🧪 **Spesifikasi Terstandarisasi Lab**: Data bersumber dari pengujian laboratorium independen (RunRepeat), bukan klaim iklan pabrik.
 - 💸 **Nol Biaya Operasional**: Didesain berjalan di tier gratis (Next.js di Vercel Hobby + Turso Serverless SQLite).
@@ -94,6 +97,10 @@ Pilih salah satu konfigurasi di dalam file `.env`:
   TURSO_DATABASE_URL=file:./data/shoes.db
   TURSO_AUTH_TOKEN=
   ```
+
+**Scan Sepatu (AI)** — opsional:
+- Pengguna aplikasi memakai key sendiri (BYOK) lewat tombol kunci di halaman utama. Buat key gratis di [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
+- Untuk development saja, isi `GEMINI_API_KEY` di `.env.local` agar kamera/UI bisa dicoba tanpa mengisi key di browser. Key server **diabaikan saat `NODE_ENV=production`**; jangan isi di Vercel.
 
 ### Manajemen & Verifikasi Database
 ```bash

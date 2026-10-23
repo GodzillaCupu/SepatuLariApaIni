@@ -5,14 +5,20 @@ import { RunningShoe } from "@/types";
 import { CATEGORIES_META } from "@/constants/categories";
 import { ShoeImage } from "@/components/ShoeImage";
 import { FitBadges } from "@/components/FitBadges";
-import { Gauge, Scale, MoveVertical, ChevronRight } from "lucide-react";
+import { Gauge, Scale, MoveVertical, ChevronRight, GitCompareArrows } from "lucide-react";
 
 interface Props {
   shoe: RunningShoe;
   onClick: () => void;
+  /** Sedang dipilih untuk dibandingkan. */
+  compared?: boolean;
+  /** Bila ada, tombol "Bandingkan" ditampilkan. */
+  onToggleCompare?: () => void;
+  /** Batas pilihan tercapai (tombol non-aktif untuk sepatu yang belum dipilih). */
+  compareDisabled?: boolean;
 }
 
-export function ShoeCard({ shoe, onClick }: Props) {
+export function ShoeCard({ shoe, onClick, compared = false, onToggleCompare, compareDisabled = false }: Props) {
   const meta = CATEGORIES_META[shoe.category] || {
     label: shoe.category,
     badgeColor: "text-slate-700",
@@ -87,8 +93,27 @@ export function ShoeCard({ shoe, onClick }: Props) {
       </div>
 
       {/* Footer Info */}
-      <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-        <span>Busa: <strong className="text-slate-600">{shoe.specs?.foamType ?? "-"}</strong></span>
+      <div className="flex items-center justify-between gap-2 text-[11px] text-slate-400 pt-1">
+        <span className="min-w-0 truncate">Busa: <strong className="text-slate-600">{shoe.specs?.foamType ?? "-"}</strong></span>
+        {onToggleCompare && (
+          <button
+            type="button"
+            aria-pressed={compared}
+            disabled={compareDisabled && !compared}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleCompare();
+            }}
+            className={`shrink-0 inline-flex items-center gap-1 font-semibold px-2.5 py-1 rounded-full border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+              compared
+                ? "bg-emerald-600 text-white border-emerald-600"
+                : "bg-white text-slate-600 border-slate-200 hover:border-emerald-300"
+            }`}
+          >
+            <GitCompareArrows className="w-3 h-3" />
+            {compared ? "Dipilih" : "Bandingkan"}
+          </button>
+        )}
         <div className="flex items-center text-emerald-600 font-semibold gap-0.5">
           <span>Lihat Lab</span>
           <ChevronRight className="w-3.5 h-3.5" />

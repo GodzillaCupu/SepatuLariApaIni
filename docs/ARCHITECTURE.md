@@ -95,6 +95,7 @@ SepatuLariApaIni/
 │   ├── ARCHITECTURE.md       # (Dokumen ini)
 │   ├── DB-SYNC-TURSO.md      # Sinkronisasi SQLite lokal → Turso (backup, replace, rollback)
 │   ├── PRD.md                # Visi produk awal (sebagian belum dikerjakan)
+│   ├── adr/ADR-001-ai-vision-scan.md # Keputusan arsitektur AI Vision (BYOK)
 │   ├── PROJECT_NOTES.md      # Status & patokan pengerjaan
 │   └── running-shoe-categories-guide.md # Panduan kategori sepatu
 │
@@ -120,12 +121,19 @@ SepatuLariApaIni/
     │   ├── fit.ts            # Label & warna badge sizing / breathability
     │   └── guide.ts          # Konten halaman /panduan (rotasi, fit, breathability)
     │
+    ├── lib/                  # Logika murni (mudah dites, tanpa alias @/)
+    │   ├── text.ts           # normalizeName (dipakai scraper & matcher)
+    │   ├── compare.ts        # Util banding sepatu (leader, bar, diff, parse ids)
+    │   └── vision/           # AI Vision: schema, key, gemini, match-shoe, handler, client
+    │
     ├── components/           # Komponen UI React (Client Components)
     │   ├── Navbar.tsx        # Header dengan indikator status online/offline
     │   ├── RotationFilter.tsx# Tombol filter kategori scrollable
     │   ├── ShoeCard.tsx      # Kartu ringkasan spesifikasi lab + thumbnail
     │   ├── ShoeImage.tsx     # next/image dengan fallback ikon
     │   ├── FitBadges.tsx     # Badge fit & adem/panas
+    │   ├── ScanShoeSheet.tsx # Bottom sheet Scan (kamera/galeri → hasil/kandidat)
+    │   ├── AiSettingsModal.tsx # Modal BYOK: simpan/hapus key Gemini (localStorage)
     │   └── ShoeDetailModal.tsx # Bottom sheet detail specs & pros/cons
     │
     └── app/                  # Next.js App Router Layer
@@ -135,6 +143,8 @@ SepatuLariApaIni/
         ├── page.tsx          # Halaman katalog: search, chip kategori, panel Fit & Breathability
         ├── panduan/
         │   └── page.tsx      # Halaman Panduan Filter (3 tab)
+        ├── bandingkan/
+        │   └── page.tsx      # Banding 2–3 sepatu (?ids=a,b)
         │
         └── api/              # REST API Endpoints
             └── shoes/
@@ -143,6 +153,8 @@ SepatuLariApaIni/
                 │   └── route.ts     # GET /api/shoes/:id (detail)
                 └── categories/
                     └── route.ts     # GET /api/shoes/categories (metadata)
+            └── detect-shoe/
+                └── route.ts         # POST /api/detect-shoe (AI Vision, no-store)
 ```
 
 ---
@@ -178,7 +190,20 @@ SepatuLariApaIni/
 ### E. Gambar Produk
 - `ShoeImage.tsx` memakai `next/image` (`fill`, `object-contain`) dengan `imageUrl` dari RunRepeat. Hostname harus terdaftar di `images.remotePatterns` (`next.config.mjs`). Bila URL kosong atau `onError`, tampil ikon `Footprints`.
 
-### F. PWA & Service Worker (`@ducanh2912/next-pwa`)
+### F. AI Vision Scan (`/api/detect-shoe`)
+```
+Browser (resize 1024px JPEG, key dari localStorage)
+   └─ POST /api/detect-shoe  (header x-gemini-key)
+        └─ handleDetect (src/lib/vision/handler.ts)
+             ├─ resolveApiKey: BYOK → (dev saja) GEMINI_API_KEY → 401
+             ├─ validasi Zod (mime, ukuran)
+             ├─ Gemini 2.5 Flash (REST, JSON terstruktur)
+             └─ matchShoe → katalog `shoes` (fuzzy, di memori)
+```
+- Key dikirim via header (bukan URL) ke Gemini (`x-goog-api-key`) dan tidak pernah dilog/disimpan. Keputusan & alternatif: `docs/adr/ADR-001-ai-vision-scan.md`.
+- POST tidak di-cache Service Worker (hanya GET); saat offline UI menampilkan pesan khusus.
+
+### G. PWA & Service Worker (`@ducanh2912/next-pwa`)
 - Konfigurasi diatur dalam `next.config.mjs`.
 - Saat build (`npm run build`), Workbox mengompilasi `public/sw.js`.
 - Service worker memotong (*intercept*) request jaringan:
