@@ -3,6 +3,7 @@
 import React from "react";
 import { RunningShoe } from "@/types";
 import { CATEGORIES_META } from "@/constants/categories";
+import { ShoeImage } from "@/components/ShoeImage";
 import { FitBadges } from "@/components/FitBadges";
 import { Gauge, Scale, MoveVertical, ChevronRight } from "lucide-react";
 
@@ -24,22 +25,27 @@ export function ShoeCard({ shoe, onClick }: Props) {
       onClick={onClick}
       className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm hover:shadow-md transition-all active:scale-[0.99] cursor-pointer flex flex-col gap-3"
     >
-      {/* Top Header: Brand, Model, Category Badge */}
-      <div className="flex items-start justify-between gap-2">
-        <div>
+      {/* Top Header: Thumbnail, Brand, Model, Category Badge */}
+      <div className="flex items-start gap-3">
+        <ShoeImage
+          src={shoe.imageUrl}
+          alt={`${shoe.brand} ${shoe.model}`}
+          sizes="96px"
+          className="w-24 h-24 rounded-xl border border-slate-100 shrink-0"
+        />
+        <div className="min-w-0 flex-1 space-y-1">
           <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
             {shoe.brand}
           </span>
           <h3 className="text-base font-bold text-slate-900 leading-tight">
             {shoe.model}
           </h3>
+          <span
+            className={`inline-block text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${meta.badgeBg} ${meta.badgeColor} ${meta.badgeBorder}`}
+          >
+            {meta.label}
+          </span>
         </div>
-
-        <span
-          className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${meta.badgeBg} ${meta.badgeColor} ${meta.badgeBorder} shrink-0`}
-        >
-          {meta.label}
-        </span>
       </div>
 
       {/* Primary Use & Target Pace */}

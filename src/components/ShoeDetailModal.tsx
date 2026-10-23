@@ -3,6 +3,7 @@
 import React from "react";
 import { RunningShoe } from "@/types";
 import { CATEGORIES_META } from "@/constants/categories";
+import { ShoeImage } from "@/components/ShoeImage";
 import { FitBadges } from "@/components/FitBadges";
 import {
   X,
@@ -76,6 +77,13 @@ export function ShoeDetailModal({ shoe, onClose }: Props) {
 
         {/* Scrollable Content */}
         <div className="p-4 sm:p-6 space-y-5 overflow-y-auto">
+          <ShoeImage
+            src={shoe.imageUrl}
+            alt={`${shoe.brand} ${shoe.model}`}
+            sizes="(max-width: 512px) 100vw, 512px"
+            priority
+            className="w-full h-48 rounded-2xl border border-slate-100"
+          />
           {/* Target Pace Banner */}
           <div className="bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent p-3.5 rounded-2xl border border-emerald-200/50 flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
