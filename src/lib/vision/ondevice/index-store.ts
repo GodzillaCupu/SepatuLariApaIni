@@ -1,6 +1,6 @@
 import { dequantizeInt8, type IndexRow } from "./vector";
 
-export const DEFAULT_MODEL = "clip";
+export const DEFAULT_MODEL = "siglip";
 export const INDEX_VERSION = 1;
 
 export interface IndexManifest {

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { RotationFilter, CATEGORIES } from "@/components/RotationFilter";
+import { SiteFooter } from "@/components/SiteFooter";
 import { Pagination } from "@/components/Pagination";
 import { ShoeCard } from "@/components/ShoeCard";
 import { ShoeDetailModal } from "@/components/ShoeDetailModal";
@@ -371,6 +372,8 @@ export default function HomePage() {
         }}
       />
       <AiSettingsModal open={aiSettingsOpen} onClose={() => setAiSettingsOpen(false)} />
+
+      <SiteFooter />
 
       {/* Detail Modal */}
       <ShoeDetailModal

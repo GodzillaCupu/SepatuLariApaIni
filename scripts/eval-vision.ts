@@ -29,7 +29,7 @@ interface Manifest {
   model: { name: string };
   dim: number;
   count: number;
-  rows: { shoeId: string; photo: number; mirrored: boolean }[];
+  rows: { shoeId: string; photo: number; mirrored: boolean; kind: string }[];
 }
 
 function arg(name: string, fallback: string) {
@@ -41,10 +41,10 @@ function loadIndex(model: string) {
   const manifest: Manifest = JSON.parse(fs.readFileSync(path.join(OUT, `manifest-${model}-v1.json`), "utf8"));
   const bin = fs.readFileSync(path.join(OUT, `index-${model}-v1.bin`));
   const { dim, count } = manifest;
-  const rows: (IndexRow & { photo: number })[] = [];
+  const rows: (IndexRow & { photo: number; kind: string })[] = [];
   for (let i = 0; i < count; i++) {
     const q = new Int8Array(bin.buffer, bin.byteOffset + i * dim, dim);
-    rows.push({ shoeId: manifest.rows[i].shoeId, photo: manifest.rows[i].photo, vector: dequantizeInt8(q) });
+    rows.push({ shoeId: manifest.rows[i].shoeId, photo: manifest.rows[i].photo, kind: manifest.rows[i].kind, vector: dequantizeInt8(q) });
   }
   return { manifest, rows };
 }
@@ -95,37 +95,52 @@ async function main() {
     console.log(`  ${rank === 0 ? "✅" : rank > 0 ? "🟡" : "❌"} ${path.basename(c.file)} (benar: ${c.shoeId}) → ${top.map((p) => p.shoeId).join(" | ")}`);
   }
 
-  // 2) LEAVE-ONE-OUT
-  const loo: Tally = { n: 0, top1: 0, top3: 0, top5: 0 };
-  const confusions = new Map<string, number>();
-  const photos = new Map<number, { shoeId: string; idx: number }>();
-  rows.forEach((r, i) => {
-    if (!manifest.rows[i].mirrored) photos.set(r.photo, { shoeId: r.shoeId, idx: i });
-  });
-  const perShoePhotos = new Map<string, number>();
-  Array.from(photos.values()).forEach((p) => perShoePhotos.set(p.shoeId, (perShoePhotos.get(p.shoeId) ?? 0) + 1));
-  photos.forEach((p, photo) => {
-    if ((perShoePhotos.get(p.shoeId) ?? 0) < 2) return; // tak ada pembanding sesudah dikeluarkan
-    const rest = rows.filter((r) => r.photo !== photo);
-    const top = rankShoes(rows[p.idx].vector, rest, { topK: 5 });
-    const rank = top.findIndex((x) => x.shoeId === p.shoeId);
-    addTo(loo, rank);
-    if (rank !== 0) {
-      const key = `${p.shoeId} → ${top[0].shoeId}`;
-      confusions.set(key, (confusions.get(key) ?? 0) + 1);
-    }
-  });
-  console.log(`\n== LEAVE-ONE-OUT (${loo.n} foto) ==`);
-  console.log(`  top-1 ${pct(loo.top1, loo.n)} | top-3 ${pct(loo.top3, loo.n)} | top-5 ${pct(loo.top5, loo.n)}`);
-  const worst = Array.from(confusions.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  if (worst.length) console.log("  Salah-tebak tersering:\n" + worst.map(([k, v]) => `    ${v}× ${k}`).join("\n"));
+  // 2) LEAVE-ONE-OUT — varian: query semua foto vs hanya foto sepatu utuh ("product"),
+  //    referensi = indeks penuh vs hanya foto "product" (mengukur apakah foto detail/lab menolong atau mencemari).
+  function loo(queryKinds: "all" | "product", refKinds: "all" | "product") {
+    const t: Tally = { n: 0, top1: 0, top3: 0, top5: 0 };
+    const confusions = new Map<string, number>();
+    const ref = refKinds === "all" ? rows : rows.filter((r) => r.kind === "product");
+    const photos = new Map<number, { shoeId: string; idx: number }>();
+    rows.forEach((r, i) => {
+      if (manifest.rows[i].mirrored) return;
+      if (queryKinds === "product" && r.kind !== "product") return;
+      photos.set(r.photo, { shoeId: r.shoeId, idx: i });
+    });
+    const perShoe = new Map<string, number>();
+    ref.forEach((r) => perShoe.set(r.shoeId, (perShoe.get(r.shoeId) ?? 0) + 1));
+    photos.forEach((p, photo) => {
+      const rest = ref.filter((r) => r.photo !== photo);
+      if (!rest.some((r) => r.shoeId === p.shoeId)) return; // tak ada pembanding sesudah dikeluarkan
+      const top = rankShoes(rows[p.idx].vector, rest, { topK: 5 });
+      const rank = top.findIndex((x) => x.shoeId === p.shoeId);
+      addTo(t, rank);
+      if (rank !== 0) {
+        const key = `${p.shoeId} → ${top[0].shoeId}`;
+        confusions.set(key, (confusions.get(key) ?? 0) + 1);
+      }
+    });
+    return { t, confusions };
+  }
+  const variants = [
+    { name: "query semua → ref semua", q: "all", r: "all" },
+    { name: "query product → ref semua", q: "product", r: "all" },
+    { name: "query product → ref product saja", q: "product", r: "product" },
+  ] as const;
+  const looResults = variants.map((v) => ({ ...v, ...loo(v.q, v.r) }));
+  console.log("\n== LEAVE-ONE-OUT ==");
+  for (const v of looResults) console.log(`  ${v.name.padEnd(34)} n=${String(v.t.n).padEnd(5)} top-1 ${pct(v.t.top1, v.t.n)} | top-3 ${pct(v.t.top3, v.t.n)} | top-5 ${pct(v.t.top5, v.t.n)}`);
+  const main_ = looResults[1];
+  const worst = Array.from(main_.confusions.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8);
+  if (worst.length) console.log("  Salah-tebak tersering (query product → ref semua):\n" + worst.map(([k, v]) => `    ${v}× ${k}`).join("\n"));
+  const looMain = main_.t;
 
   console.log(`\nEKSTERNAL top-1 ${pct(ext.top1, ext.n)} | top-3 ${pct(ext.top3, ext.n)} | top-5 ${pct(ext.top5, ext.n)}  (n=${ext.n})`);
 
   if (write) {
     const file = path.resolve(process.cwd(), "docs/vision-eval.md");
-    const header = `# Evaluasi prediktor visual\n\nDihasilkan \`npm run vision:eval -- --write\`. Eksternal = foto di luar indeks (data/eval + 2 foto uji manual). LOO optimistis (foto satu sesi mirip).\n\n| Model | Tanggal | Vektor | Eksternal n | Ext top-1 | Ext top-3 | Ext top-5 | LOO n | LOO top-1 | LOO top-3 | LOO top-5 |\n|---|---|---|---|---|---|---|---|---|---|---|\n`;
-    const line = `| ${model} | ${new Date().toISOString().slice(0, 10)} | ${rows.length} | ${ext.n} | ${pct(ext.top1, ext.n)} | ${pct(ext.top3, ext.n)} | ${pct(ext.top5, ext.n)} | ${loo.n} | ${pct(loo.top1, loo.n)} | ${pct(loo.top3, loo.n)} | ${pct(loo.top5, loo.n)} |\n`;
+    const header = `# Evaluasi prediktor visual\n\nDihasilkan \`npm run vision:eval -- --write\`. Eksternal = foto di luar indeks (data/eval + 2 foto uji manual). LOO = query foto sepatu utuh (kind=product), referensi indeks penuh.\n\n| Model | Tanggal | Vektor | Eksternal n | Ext top-1 | Ext top-3 | Ext top-5 | LOO n | LOO top-1 | LOO top-3 | LOO top-5 |\n|---|---|---|---|---|---|---|---|---|---|---|\n`;
+    const line = `| ${model} | ${new Date().toISOString().slice(0, 10)} | ${rows.length} | ${ext.n} | ${pct(ext.top1, ext.n)} | ${pct(ext.top3, ext.n)} | ${pct(ext.top5, ext.n)} | ${looMain.n} | ${pct(looMain.top1, looMain.n)} | ${pct(looMain.top3, looMain.n)} | ${pct(looMain.top5, looMain.n)} |\n`;
     fs.writeFileSync(file, (fs.existsSync(file) ? fs.readFileSync(file, "utf8") : header) + line);
     console.log(`Ditulis ke ${file}`);
   }

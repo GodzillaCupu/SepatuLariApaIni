@@ -29,7 +29,7 @@ export function ShoeCard({ shoe, onClick, compared = false, onToggleCompare, com
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm hover:shadow-md transition-all active:scale-[0.99] cursor-pointer flex flex-col gap-3"
+      className="min-w-0 bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm hover:shadow-md transition-all active:scale-[0.99] cursor-pointer flex flex-col gap-3"
     >
       {/* Top Header: Thumbnail, Brand, Model, Category Badge */}
       <div className="flex items-start gap-3">
@@ -114,7 +114,7 @@ export function ShoeCard({ shoe, onClick, compared = false, onToggleCompare, com
             {compared ? "Dipilih" : "Bandingkan"}
           </button>
         )}
-        <div className="flex items-center text-emerald-600 font-semibold gap-0.5">
+        <div className="flex items-center text-emerald-600 font-semibold gap-0.5 whitespace-nowrap shrink-0">
           <span>Lihat Lab</span>
           <ChevronRight className="w-3.5 h-3.5" />
         </div>
