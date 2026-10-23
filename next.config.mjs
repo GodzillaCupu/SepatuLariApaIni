@@ -10,6 +10,7 @@ const withPWA = withPWAInit({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  swcMinify: false,
   // transformers.js jalan di browser (WASM): jangan tarik modul Node ke bundle klien.
   webpack: (config, { isServer }) => {
     // Klien: tanpa modul Node. Server (SSR komponen klien): modul tidak pernah dijalankan → kosongkan
