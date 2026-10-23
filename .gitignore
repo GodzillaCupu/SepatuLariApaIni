@@ -33,6 +33,8 @@ data/shoes.db
 data/shoes.db-journal
 data/shoes.db-shm
 data/shoes.db-wal
+data/*.bak
+data/*.sql
 
 # Vercel
 .vercel
