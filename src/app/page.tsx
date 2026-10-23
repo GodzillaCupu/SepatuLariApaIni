@@ -1,28 +1,47 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
-import { RotationFilter } from "@/components/RotationFilter";
+import { RotationFilter, CATEGORIES } from "@/components/RotationFilter";
 import { ShoeCard } from "@/components/ShoeCard";
 import { ShoeDetailModal } from "@/components/ShoeDetailModal";
 import { RunningShoe, Sizing, Breathability } from "@/types";
-import { SIZING_META, BREATHABILITY_META } from "@/constants/fit";
-import { Search, Loader2, Sparkles, AlertCircle } from "lucide-react";
+import { BREATHABILITY_META } from "@/constants/fit";
+import { Search, Loader2, Sparkles, AlertCircle, SlidersHorizontal, ChevronDown, BookOpen } from "lucide-react";
+
+type FitFilter = "true_to_size" | "narrow" | "wide";
+
+/** Filter Fit: ukuran kecil digabung ke Sempit, ukuran besar digabung ke Lebar. */
+const FIT_GROUPS: Record<FitFilter, Sizing[]> = {
+  true_to_size: ["true_to_size"],
+  narrow: ["narrow", "runs_small"],
+  wide: ["wide", "runs_large"],
+};
+const FIT_OPTIONS: string[][] = [
+  ["true_to_size", "True to size", "Panjang pas, lebar standar"],
+  ["narrow", "Sempit / Kecil", "Kaki terasa sempit atau ukuran jatuh kecil — pertimbangkan varian wide atau naik ½–1 size"],
+  ["wide", "Lebar / Besar", "Ruang lega atau ukuran jatuh besar — pertimbangkan turun ½–1 size bila longgar"],
+];
 
 function FilterChips({
   title,
+  desc,
   value,
   onChange,
   options,
 }: {
   title: string;
+  desc: string;
   value: string;
   onChange: (v: string) => void;
   options: string[][];
 }) {
+  const active = options.find(([key]) => key === value);
   return (
     <div className="space-y-1.5">
       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{title}</p>
+      <p className="text-[11px] text-slate-500 leading-snug">{desc}</p>
       <div className="flex flex-wrap gap-1.5">
         {options.map(([key, label]) => (
           <button
@@ -38,6 +57,11 @@ function FilterChips({
           </button>
         ))}
       </div>
+      {active && active[2] && (
+        <p className="text-[11px] text-emerald-700 bg-emerald-50 rounded-lg px-2.5 py-1.5">
+          <span className="font-semibold">{active[1]}:</span> {active[2]}
+        </p>
+      )}
     </div>
   );
 }
@@ -47,8 +71,9 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>("");
-  const [sizingFilter, setSizingFilter] = useState<Sizing | "">("");
+  const [sizingFilter, setSizingFilter] = useState<FitFilter | "">("");
   const [breathFilter, setBreathFilter] = useState<Breathability | "">("");
+  const [showFilter, setShowFilter] = useState(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedShoe, setSelectedShoe] = useState<RunningShoe | null>(null);
 
@@ -85,7 +110,9 @@ export default function HomePage() {
           s.model.toLowerCase().includes(q) ||
           s.primaryUse.toLowerCase().includes(q)
         : true;
-      const matchSizing = sizingFilter ? s.sizing === sizingFilter : true;
+      const matchSizing = sizingFilter
+        ? (FIT_GROUPS[sizingFilter] as Sizing[]).includes(s.sizing as Sizing)
+        : true;
       const matchBreath = breathFilter ? s.breathability === breathFilter : true;
       return matchCategory && matchSearch && matchSizing && matchBreath;
     });
@@ -133,20 +160,66 @@ export default function HomePage() {
           />
         </div>
 
-        {/* Fit & Breathability Filter */}
+        <Link
+          href="/panduan"
+          className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 hover:underline"
+        >
+          <BookOpen className="w-3.5 h-3.5" /> Lihat panduan arti kategori &amp; filter
+        </Link>
+
+        {/* Arti kategori terpilih */}
+        {selectedCategory && (
+          <p className="text-[11px] text-slate-600 bg-white border border-slate-200/80 rounded-xl px-3 py-2 leading-snug">
+            <span className="font-semibold">
+              {CATEGORIES.find((c) => c.key === selectedCategory)?.label}:
+            </span>{" "}
+            {CATEGORIES.find((c) => c.key === selectedCategory)?.desc}
+          </p>
+        )}
+
+        {/* Fit & Breathability Filter (1 tombol) */}
         <div className="space-y-2">
-          <FilterChips
-            title="Fit"
-            value={sizingFilter}
-            onChange={(v) => setSizingFilter(v as Sizing | "")}
-            options={(["true_to_size", "narrow", "wide", "runs_small", "runs_large"] as Sizing[]).map((k) => [k, SIZING_META[k].label])}
-          />
-          <FilterChips
-            title="Adem / Panas"
-            value={breathFilter}
-            onChange={(v) => setBreathFilter(v as Breathability | "")}
-            options={(["cool", "moderate", "warm"] as Breathability[]).map((k) => [k, BREATHABILITY_META[k].label])}
-          />
+          <button
+            onClick={() => setShowFilter((v) => !v)}
+            className="w-full flex items-center justify-between bg-white border border-slate-200/80 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 shadow-sm"
+          >
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4 text-emerald-600" />
+              Fit &amp; Breathability
+              {(sizingFilter || breathFilter) && (
+                <span className="bg-emerald-600 text-white text-[10px] rounded-full px-1.5 py-0.5">
+                  {(sizingFilter ? 1 : 0) + (breathFilter ? 1 : 0)}
+                </span>
+              )}
+            </span>
+            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showFilter ? "rotate-180" : ""}`} />
+          </button>
+          {showFilter && (
+            <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 space-y-4 shadow-sm">
+              <FilterChips
+                title="Fit"
+                desc="Kecocokan ukuran sepatu di kaki (panjang & lebar) berdasarkan ulasan pelari."
+                value={sizingFilter}
+                onChange={(v) => setSizingFilter(v as FitFilter | "")}
+                options={FIT_OPTIONS}
+              />
+              <FilterChips
+                title="Breathability"
+                desc="Seberapa adem atau panas sepatu saat dipakai lari, tergantung bahan upper."
+                value={breathFilter}
+                onChange={(v) => setBreathFilter(v as Breathability | "")}
+                options={(["cool", "moderate", "warm"] as Breathability[]).map((k) => [k, BREATHABILITY_META[k].label, BREATHABILITY_META[k].hint])}
+              />
+              {(sizingFilter || breathFilter) && (
+                <button
+                  onClick={() => { setSizingFilter(""); setBreathFilter(""); }}
+                  className="text-[11px] font-semibold text-emerald-600 hover:underline"
+                >
+                  Hapus filter Fit &amp; Breathability
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Shoe List Grid */}
