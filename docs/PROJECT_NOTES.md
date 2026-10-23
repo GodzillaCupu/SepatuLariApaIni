@@ -9,14 +9,18 @@
 Fitur **AI Vision Scan DITANGGUHKAN** sementara hingga ada instruksi eksplisit untuk melanjutkan.
 
 Status Implementasi:
-1. [x] **Database & ORM**: Drizzle ORM dengan LibSQL Client terintegrasi ganda (Turso Cloud untuk cloud/prod & SQLite file untuk offline). Skema tabel `shoes` ter-push ke Turso dan ter-seed 6 sepatu.
+1. [x] **Database & ORM**: Drizzle ORM dengan LibSQL Client terintegrasi ganda (Turso Cloud untuk cloud/prod & SQLite file untuk offline). Skema tabel `shoes` ter-push ke Turso; katalog saat ini 57 sepatu.
 2. [x] **Resilience Layer**: Fallback dataset statis (`src/data/fallback-shoes.ts`) menjamin zero-downtime jika DB unreachable.
 3. [x] **REST API**: Endpoint Next.js App Router (`/api/shoes`, `/api/shoes/[id]`, `/api/shoes/categories`) aktif.
 4. [x] **PWA Integration**: Service Worker (`@ducanh2912/next-pwa`), manifest, offline banner terpasang.
 5. [x] **Frontend UI**: Katalog mobile-first, filter rotasi, real-time search, bottom sheet modal lab specs, badge & filter fit / adem-panas.
 6. [x] **Scraper v2**: parser murni (`scripts/lib/`), pemisahan brand/model berbasis daftar brand, definisi sizing & breathability, mode bulk (`--file`, `--catalog`, `--from-db`, `--dry-run`), audit (`npm run db:audit`) dan unit test (`npm run test`).
-7. [ ] **Backfill DB**: `npm run db:push` (kolom fit/breathability) lalu `npm run scrape:fix` untuk data lama.
-8. [ ] **Pengayaan Data**: Batch scraping 30+ sepatu populer tambahan.
+7. [x] **Backfill DB**: kolom fit/breathability + `scrape:fix` selesai; lokal & Turso sinkron **57 sepatu** (2026-10-23, lihat `docs/DB-SYNC-TURSO.md`).
+8. [x] **Foto produk**: `ShoeImage` di kartu & modal (fallback ikon); semua baris punya `image_url`.
+9. [x] **Halaman Panduan** `/panduan` + chip filter kategori / Fit / Breathability.
+10. [x] **Ikon PWA**: icons 192/512 (any + maskable), favicon, apple-icon.
+11. [ ] **Pengayaan Data**: tambah model populer; kategori trail, stability, race pendek masih tipis; 32/57 baris `release_year = 0`.
+12. [ ] **Fitur berikutnya**: perbandingan sepatu, "My Rotation", menu Road/Trail (lihat `CHANGELOG.md`).
 
 ---
 
@@ -100,7 +104,9 @@ Caching Headers:
 ## 4. Arsitektur & PWA
 
 - **Framework**: Next.js 14+ (App Router), React, TypeScript, Tailwind CSS.
-- **PWA Module**: `@ducanh2912/next-pwa` atau `@serwist/next`.
+- **PWA Module**: `@ducanh2912/next-pwa` (aktif; dinonaktifkan saat `NODE_ENV=development`).
+- **Halaman**: `/` (katalog) dan `/panduan` (panduan filter).
+- **Testing**: vitest (`npm run test`, 48 test lulus: parser, brand, fit/breathability).
 - **Offline**: Service Worker (Workbox) men-cache aset & respons `/api/shoes`. Rencana IndexedDB / TanStack Query belum dikerjakan.
 
 ---
@@ -120,4 +126,5 @@ Caching Headers:
 - **Prioritas Pengerjaan**:
   1. Backfill DB: `db:push` + `scrape:fix` (setelah backup).
   2. Perkaya dataset (30+ sepatu) via `scrape-bulk`.
-  3. Foto/thumbnail produk, menu road/trail, brand sebagai tabel (lihat `CHANGELOG.md`).
+  3. Menu road/trail, brand sebagai tabel, perbandingan sepatu (lihat `CHANGELOG.md`).
+  4. Setelah scraping: backup DB → `db:audit` → sinkron ke Turso (`docs/DB-SYNC-TURSO.md`).

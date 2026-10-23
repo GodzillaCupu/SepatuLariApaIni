@@ -56,6 +56,8 @@ Exit code `1` hanya bila **semua** job gagal. Sepatu `needs_review` tidak membua
 
 **Selalu `cp data/shoes.db data/shoes.db.bak` (atau snapshot Turso) sebelum menulis ke DB.**
 
+Setelah scraping ke DB lokal, salin hasilnya ke Turso production dengan panduan [`../docs/DB-SYNC-TURSO.md`](../docs/DB-SYNC-TURSO.md).
+
 ---
 
 ## 2. Alur Scraper
@@ -130,7 +132,7 @@ Selain spesifikasi lab, tabel `shoes` memiliki: `sizing`, `length_fit`, `width_f
 
 ```bash
 npm run db:audit        # validasi tiap baris DB dengan RunningShoeSchema yang sama dengan scraper
-npm run test            # vitest: parser, brand, fit/breathability, skema (fixture HTML nyata)
+npm run test            # vitest: parser, brand, fit/breathability, skema (fixture HTML nyata; 48 test)
 ```
 
 Fixture ada di `scripts/__fixtures__/` (ASICS Novablast 4, HOKA Speedgoat 5). Untuk kasus baru (mis. brand 2 kata, sepatu waterproof) simpan HTML halaman sebagai fixture baru dan tambah assert di `__tests__/`.

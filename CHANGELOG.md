@@ -6,6 +6,18 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 
 ## [Unreleased]
 
+### Added (UI, PWA, ops) — 2026-10-23
+- **Foto sepatu**: komponen `ShoeImage` (`next/image`, fallback ikon bila URL kosong/gagal) di kartu & modal detail. Host gambar diizinkan di `next.config.mjs`: `cdn.runrepeat.com`, `runrepeat.com`, `images.unsplash.com`.
+- **Halaman Panduan** `/panduan` (`src/app/panduan/page.tsx`, konten di `src/constants/guide.ts`): tab Kategori Rotasi / Fit / Breathability. Tautan dari halaman utama.
+- **Filter halaman utama**: 9 chip kategori (Semua, Daily, Super Shoes, Super Trainer, Speed/Tempo, Max Cushion, Stability, Trail Daily, Trail Ultra) cocok ke `category` **atau** `subCategory`; panel collapsible "Fit & Breathability" dengan penjelasan chip aktif. Filter Fit menggabung `runs_small` → Sempit/Kecil dan `runs_large` → Lebar/Besar.
+- **Ikon & manifest PWA**: `public/icons/` (192, 512, svg), `src/app/icon.svg`, `favicon.ico`, `apple-icon.png`; `manifest.json` memuat ikon `any` + `maskable`.
+- **Docs**: `docs/DB-SYNC-TURSO.md` (cara menyamakan Turso dengan SQLite lokal, termasuk backup & rollback); `.gitignore` mengabaikan `data/*.bak` dan `data/*.sql`.
+
+### Data
+- DB lokal & Turso production: **57 sepatu** (sinkron 2026-10-23; sebelumnya Turso 37 baris tanpa kolom fit/breathability). Backfill `db:push` + `scrape:fix` **selesai**.
+- Sebaran kategori: daily_trainer 24, max_cushion 16, super_shoes 11, super_trainer 3, stability 1, trail_race_long 1, trail_super_shoes 1. Semua baris punya `image_url`.
+- Catatan kualitas: 32 dari 57 baris `release_year = 0` (tahun rilis tidak tersedia di halaman sumber).
+
 ### Added (fit, breathability, brand)
 - `scripts/lib/brands.ts`: daftar brand kanonik + alias; judul dipecah dengan awalan terpanjang (fix "New Balance" → brand `New`). Brand tak dikenal → `needs_review`.
 - `scripts/lib/classify-fit.ts`: definisi sendiri `sizing` (true_to_size/narrow/wide/runs_small/runs_large) dan `breathability` (cool/moderate/warm). Kolom DB baru: `sizing`, `length_fit`, `width_fit`, `fit_votes`, `breathability`, `upper_material` (perlu `npm run db:push`).
@@ -16,7 +28,7 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 ### Changed
 - Nama brand kanonik: `ASICS`, `HOKA` (fallback dataset disamakan).
 - `scrape-bulk --report` membuat folder tujuan otomatis.
-- Perlu re-scrape (`npm run scrape:fix`) untuk mengisi data fit/breathability & memperbaiki brand lama pada DB.
+- Re-scrape (`npm run scrape:fix`) sudah dijalankan; data fit/breathability & brand terisi untuk 57 baris.
 
 ### Fixed
 - Scraper RunRepeat: ekstraksi spec lab, deteksi plat per kalimat, klasifikasi dari fakta terstruktur (lihat `scripts/README.md`).
@@ -61,8 +73,10 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 
 ### Milestone 1: Pengayaan Dataset Sepatu (Katalog 30+ Sepatu)
 - [x] Script batch scraping tersedia: `scripts/scrape-bulk.ts` (argumen URL, `--file`, `--catalog`, `--from-db`, `--dry-run`).
-- [ ] Jalankan batch untuk daftar URL sepatu terpopuler di Indonesia (Adidas Adizero Boston 12, Adios Pro 3, Hoka Clifton 9, New Balance 1080 v13, Puma Deviate Nitro 2, Brooks Ghost 16, dll).
-- [ ] Verifikasi ketepatan nilai gram dan drop mm pada database setelah scraping massal.
+- [~] Katalog sudah 57 sepatu; target 30+ tercapai. Sisa: tambah model populer di Indonesia (Adidas Adizero Boston 12, Adios Pro 3, Hoka Clifton 9, New Balance 1080 v13, Puma Deviate Nitro 2, Brooks Ghost 16, dll).
+- [x] Audit nilai gram/drop/stack lewat `npm run db:audit` (validasi Zod per baris).
+- [ ] Lengkapi `release_year` (32 baris masih 0) dan perbanyak trail / stability / race pendek (kategori ini masih tipis).
+- [ ] Menu terpisah Road vs Trail dan tampilan brand sebagai tabel.
 
 ### Milestone 2: Fitur Komparasi Sepatu (Side-by-Side Comparison)
 - [ ] Buat komponen pembanding 2 sepatu secara berdampingan (contoh: *Novablast 4 vs Pegasus 41*).

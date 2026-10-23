@@ -62,18 +62,18 @@ flowchart TD
 SepatuLariApaIni/
 ├── package.json              # Dependensi runtime & dev scripts
 ├── tsconfig.json             # Konfigurasi TypeScript & path alias (@/*)
-├── next.config.mjs           # Next.js config + PWA wrapper
+├── next.config.mjs           # Next.js config + PWA wrapper + remotePatterns gambar (runrepeat, unsplash)
 ├── tailwind.config.ts        # Styling tokens & warna tema rotasi
 ├── drizzle.config.ts         # Konfigurasi Drizzle Kit untuk migrasi DB
 ├── .env.example              # Template variabel lingkungan
 │
 ├── public/                   # Aset Statis & PWA
-│   ├── manifest.json         # PWA Manifest (nama, icon, background color)
-│   ├── sw.js                 # Service worker yang dihasilkan otomatis
-│   └── icons/                # Icon resolusi 192x192 & 512x512
+│   ├── manifest.json         # PWA Manifest (nama, ikon any + maskable, theme #10b981)
+│   ├── sw.js, workbox-*.js   # Dihasilkan otomatis saat build (di-gitignore)
+│   └── icons/                # icon-192x192.png, icon-512x512.png, icon.svg
 │
 ├── data/                     # Database lokal (SQLite)
-│   └── shoes.db              # File SQLite lokal saat pengembangan offline
+│   └── shoes.db              # File SQLite lokal (57 sepatu); *.bak / *.sql = artefak lokal, di-gitignore
 │
 ├── scripts/                  # Tool CLI Otomasi
 │   ├── scrape-runrepeat.ts   # Scraper satu halaman RunRepeat (+ --dry-run)
@@ -93,6 +93,7 @@ SepatuLariApaIni/
 │
 ├── docs/                     # Dokumentasi
 │   ├── ARCHITECTURE.md       # (Dokumen ini)
+│   ├── DB-SYNC-TURSO.md      # Sinkronisasi SQLite lokal → Turso (backup, replace, rollback)
 │   ├── PRD.md                # Visi produk awal (sebagian belum dikerjakan)
 │   ├── PROJECT_NOTES.md      # Status & patokan pengerjaan
 │   └── running-shoe-categories-guide.md # Panduan kategori sepatu
@@ -116,19 +117,24 @@ SepatuLariApaIni/
     │
     ├── constants/
     │   ├── categories.ts     # Metadata kategori (label, warna, deskripsi)
-    │   └── fit.ts            # Label & warna badge sizing / breathability
+    │   ├── fit.ts            # Label & warna badge sizing / breathability
+    │   └── guide.ts          # Konten halaman /panduan (rotasi, fit, breathability)
     │
     ├── components/           # Komponen UI React (Client Components)
     │   ├── Navbar.tsx        # Header dengan indikator status online/offline
     │   ├── RotationFilter.tsx# Tombol filter kategori scrollable
-    │   ├── ShoeCard.tsx      # Kartu ringkasan spesifikasi lab
+    │   ├── ShoeCard.tsx      # Kartu ringkasan spesifikasi lab + thumbnail
+    │   ├── ShoeImage.tsx     # next/image dengan fallback ikon
     │   ├── FitBadges.tsx     # Badge fit & adem/panas
     │   └── ShoeDetailModal.tsx # Bottom sheet detail specs & pros/cons
     │
     └── app/                  # Next.js App Router Layer
-        ├── layout.tsx        # Root HTML layout, font, dan meta viewport
+        ├── layout.tsx        # Root HTML layout, metadata, viewport, manifest
+        ├── icon.svg, favicon.ico, apple-icon.png  # Ikon app (konvensi Next.js)
         ├── globals.css       # Directives Tailwind CSS
-        ├── page.tsx          # Halaman katalog utama
+        ├── page.tsx          # Halaman katalog: search, chip kategori, panel Fit & Breathability
+        ├── panduan/
+        │   └── page.tsx      # Halaman Panduan Filter (3 tab)
         │
         └── api/              # REST API Endpoints
             └── shoes/
@@ -146,6 +152,7 @@ SepatuLariApaIni/
 ### A. Next.js App Router & REST API
 - `src/app/page.tsx` bertindak sebagai *Client Component* (`"use client"`).
 - Pada saat komponen dimuat pertama kali (`useEffect`), aplikasi memanggil `fetch('/api/shoes')`.
+- Pemfilteran di UI dilakukan **client-side** atas seluruh hasil `/api/shoes` (pencarian, kategori cocok ke `category` atau `subCategory`, Fit, Breathability); query param API tetap tersedia untuk klien lain.
 - API endpoint (`src/app/api/shoes/route.ts`) berjalan di lingkungan serverless. Endpoint ini menerima query parameter (seperti `?category=daily_trainer`, `?search=novablast`, `?sizing=true_to_size`, `?breathability=cool`) dan mendelegasikannya ke `shoe.service.ts`.
 
 ### B. Business Service & Drizzle ORM
@@ -161,14 +168,17 @@ SepatuLariApaIni/
 - Driver membaca konfigurasi dari `.env` / `.env.local`:
   - **Turso Cloud (Remote)**: URL berformat `libsql://...` dipasangkan dengan `TURSO_AUTH_TOKEN`. Driver membuka koneksi HTTPS/WebSocket aman ke Turso Cloud di AWS edge.
   - **SQLite Lokal (Offline)**: URL berformat `file:./data/shoes.db`, driver secara otomatis melakukan I/O langsung ke file lokal tanpa memerlukan internet.
-- Skema tabel disinkronkan ke cloud atau lokal menggunakan `npm run db:push`, dan diverifikasi statusnya via `npm run db:check`.
+- Skema tabel disinkronkan ke cloud atau lokal menggunakan `npm run db:push`, dan diverifikasi statusnya via `npm run db:check`. Untuk menyalin **data** lokal ke Turso, lihat `docs/DB-SYNC-TURSO.md`.
 
 ### D. Scraper & Definisi Data
 - Parser (`scripts/lib/runrepeat-parser.ts`) bersifat murni (HTML → objek) sehingga dapat dites dengan fixture. Brand/model dipisah oleh `brands.ts`; sizing & breathability oleh `classify-fit.ts`; kategori oleh `classify-shoe.ts`.
 - Data yang tidak lengkap atau tidak lolos Zod → `NeedsReviewError` (tidak masuk DB). Detail: `scripts/README.md`.
 - Penambahan kolom di `src/db/schema.ts` diterapkan dengan `npm run db:push` (tidak ada folder migrasi). Kode yang membaca kolom baru pada DB lama akan jatuh ke dataset fallback sampai skema di-push.
 
-### E. PWA & Service Worker (`@ducanh2912/next-pwa`)
+### E. Gambar Produk
+- `ShoeImage.tsx` memakai `next/image` (`fill`, `object-contain`) dengan `imageUrl` dari RunRepeat. Hostname harus terdaftar di `images.remotePatterns` (`next.config.mjs`). Bila URL kosong atau `onError`, tampil ikon `Footprints`.
+
+### F. PWA & Service Worker (`@ducanh2912/next-pwa`)
 - Konfigurasi diatur dalam `next.config.mjs`.
 - Saat build (`npm run build`), Workbox mengompilasi `public/sw.js`.
 - Service worker memotong (*intercept*) request jaringan:

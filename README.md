@@ -34,10 +34,11 @@ Pasar sepatu lari saat ini dibanjiri oleh puluhan jenis busa (*ZoomX, FF Blast+,
    - Aplikasi memakai sekitar 30 kategori terperinci (super shoes, stability, trail, dst.); daftar lengkap di [`docs/running-shoe-categories-guide.md`](docs/running-shoe-categories-guide.md).
 3. Persempit dengan filter **Fit** (true to size / sempit / lebar / ukuran kecil / besar) dan **Adem / Panas**.
 4. Daftar sepatu akan otomatis tersaring seketika (0 ms).
+5. Bingung dengan istilahnya? Buka halaman **Panduan** (`/panduan`) untuk arti tiap kategori, sub kategori, Fit, dan Breathability.
 
 ### Skenario 2: Mengecek Spesifikasi Lab di Toko Sepatu
 1. Ketik nama sepatu di kolom pencarian (misal: ketik `novablast` atau `pegasus`).
-2. Klik kartu sepatu untuk membuka lembar **Spesifikasi Uji Lab**.
+2. Klik kartu sepatu (lengkap dengan foto produk) untuk membuka lembar **Spesifikasi Uji Lab**.
 3. Periksa parameter penting:
    - **Target Pace**: Menunjukkan di rentang kecepatan berapa sepatu ini bekerja optimal (misal: `5:00 - 6:30 min/km`).
    - **Heel-to-Toe Drop**: Beda ketebalan tumit vs ujung kaki.
@@ -56,6 +57,7 @@ Pasar sepatu lari saat ini dibanjiri oleh puluhan jenis busa (*ZoomX, FF Blast+,
 - 📱 **Mobile-First & PWA**: Terasa seperti aplikasi iOS/Android native tanpa perlu download dari App Store.
 - ⚡ **Pencarian Real-Time**: Pencarian lokal dengan latensi 0 ms.
 - 👟 **Fit & Kenyamanan**: badge *True to size / Sempit / Lebar* dan *Adem / Sedang / Panas* (sirkulasi udara upper) beserta filternya.
+- 🖼️ **Foto Produk & Panduan Filter**: thumbnail di kartu dan modal (fallback ikon bila gagal), plus halaman `/panduan` yang menjelaskan semua kategori & filter.
 - 🧪 **Spesifikasi Terstandarisasi Lab**: Data bersumber dari pengujian laboratorium independen (RunRepeat), bukan klaim iklan pabrik.
 - 💸 **Nol Biaya Operasional**: Didesain berjalan di tier gratis (Next.js di Vercel Hobby + Turso Serverless SQLite).
 
@@ -101,7 +103,7 @@ npm run db:check
 # 2. Sinkronisasi skema tabel ke database (Turso / SQLite)
 npm run db:push
 
-# 3. Masukkan data katalog awal (6 sepatu lab teruji)
+# 3. Masukkan data katalog awal (6 sepatu; katalog produksi saat ini 57 sepatu hasil scraper)
 npm run db:seed
 
 # 4. (Opsional) Ambil data sepatu otomatis dari RunRepeat
@@ -123,6 +125,7 @@ npm run dev
 ```
 
 > Detail scraper, definisi sizing/breathability, dan opsi bulk: lihat [`scripts/README.md`](scripts/README.md).
+> Menyamakan Turso production dengan DB lokal setelah scraping: lihat [`docs/DB-SYNC-TURSO.md`](docs/DB-SYNC-TURSO.md).
 > Setelah menarik perubahan skema (kolom fit/breathability), jalankan `npm run db:push` **sebelum** membuka aplikasi pada DB lama.
 
 Buka [http://localhost:3000](http://localhost:3000) di browser Anda.
@@ -138,3 +141,17 @@ Buka [http://localhost:3000](http://localhost:3000) di browser Anda.
    - `TURSO_AUTH_TOKEN`: Token autentikasi Turso Anda
 4. Klik **Deploy**. Selesai. PWA dan REST API akan otomatis membaca data langsung dari Turso Cloud.
 
+
+---
+
+## 6. Dokumentasi Lain
+
+| Dokumen | Isi |
+|---|---|
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Diagram sistem, struktur direktori, alur komunikasi teknologi |
+| [`docs/PROJECT_NOTES.md`](docs/PROJECT_NOTES.md) | Status implementasi, kontrak data, spesifikasi API |
+| [`docs/PRD.md`](docs/PRD.md) | Visi produk awal (sebagian ditangguhkan) |
+| [`docs/DB-SYNC-TURSO.md`](docs/DB-SYNC-TURSO.md) | Sinkronisasi SQLite lokal → Turso |
+| [`docs/running-shoe-categories-guide.md`](docs/running-shoe-categories-guide.md) | Panduan kategori sepatu |
+| [`scripts/README.md`](scripts/README.md) | Scraper, audit, definisi data |
+| [`CHANGELOG.md`](CHANGELOG.md) | Riwayat perubahan & roadmap |
