@@ -85,6 +85,9 @@ SepatuLariApaIni/
 │   ├── lib/
 │   │   ├── runrepeat-parser.ts # Parser HTML murni
 │   │   ├── brands.ts           # Daftar brand kanonik + splitBrandModel
+│   │   ├── gallery-images.ts   # Parser galeri foto RunRepeat (product/detail/lab) → tabel shoe_images
+│   │   ├── vision-embed.ts     # Pembungkus model embedding (transformers.js, Node) untuk script
+│   ├── audit-images.ts, embed-catalog.ts, eval-vision.ts  # Audit foto → indeks embedding → evaluasi top-K
 │   │   ├── classify-fit.ts     # Definisi sizing & breathability
 │   │   └── classify-shoe.ts    # Klasifikasi kategori (30 kategori)
 │   ├── __tests__/            # Unit test vitest
@@ -96,6 +99,7 @@ SepatuLariApaIni/
 │   ├── DB-SYNC-TURSO.md      # Sinkronisasi SQLite lokal → Turso (backup, replace, rollback)
 │   ├── PRD.md                # Visi produk awal (sebagian belum dikerjakan)
 │   ├── adr/ADR-001-ai-vision-scan.md # Keputusan arsitektur AI Vision (BYOK)
+│   ├── adr/ADR-002-on-device-shoe-predictor.md # Prediktor on-device + multi-foto (Proposed)
 │   ├── PROJECT_NOTES.md      # Status & patokan pengerjaan
 │   └── running-shoe-categories-guide.md # Panduan kategori sepatu
 │

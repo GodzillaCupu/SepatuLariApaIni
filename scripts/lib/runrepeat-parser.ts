@@ -12,6 +12,7 @@ import {
   type Sizing,
   type WidthFit,
 } from "./classify-fit";
+import { parseGalleryImages, type GalleryImage } from "./gallery-images";
 
 /**
  * Parser murni halaman review RunRepeat (tanpa network / DB → mudah dites).
@@ -46,6 +47,8 @@ export interface ParsedPage {
   summary: string;
   articleText: string;
   imageUrl: string | null;
+  /** Semua foto galeri sepatu ini (product = layak embedding, lab = grafik uji). */
+  galleryImages: GalleryImage[];
   sizing: Sizing;
   lengthFit: LengthFit;
   widthFit: WidthFit;
@@ -292,6 +295,7 @@ export function parseRunRepeatHtml(html: string): ParsedPage {
     summary: shortSummary(description),
     articleText,
     imageUrl,
+    galleryImages: parseGalleryImages(html, undefined, imageUrl),
     sizing: classifySizing(lengthFit, widthFit),
     lengthFit,
     widthFit,

@@ -1,6 +1,6 @@
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
-import { shoes } from "../src/db/schema";
+import { shoes, shoeImages } from "../src/db/schema";
 import { RunningShoeSchema, RunningShoeInput } from "../src/schemas/shoe.schema";
 import { ShoeCategory } from "../src/types";
 import { classifyShoe } from "./lib/classify-shoe";
@@ -27,6 +27,8 @@ export interface ScrapedData {
   idOverride?: string;
   /** Parse + validasi saja, jangan tulis ke DB. */
   dryRun?: boolean;
+  /** Hanya isi shoe_images; kolom tabel shoes TIDAK disentuh (aman untuk backfill foto). */
+  imagesOnly?: boolean;
 }
 
 /** Halaman berhasil di-fetch tapi datanya tidak lengkap/tidak masuk akal → butuh review manual. */
@@ -182,6 +184,29 @@ export function buildShoeFromPage(
   return parsed.data;
 }
 
+/**
+ * Simpan semua foto galeri ke shoe_images (idempoten: unik per shoe+url).
+ * Gagal menyimpan foto TIDAK boleh menggagalkan scrape utama (tabel mungkin belum di-push).
+ */
+export async function saveGalleryImages(shoeId: string, images: ParsedPage["galleryImages"]) {
+  if (images.length === 0) return;
+  try {
+    for (const img of images) {
+      await db
+        .insert(shoeImages)
+        .values({ shoeId, url: img.url, kind: img.kind, label: img.label, usable: img.usable, source: "runrepeat" })
+        .onConflictDoUpdate({
+          target: [shoeImages.shoeId, shoeImages.url],
+          set: { kind: img.kind, label: img.label, usable: img.usable },
+        });
+    }
+    const usable = images.filter((i) => i.usable).length;
+    console.log(`[Scraper] 🖼  ${images.length} foto galeri (${usable} layak embedding) → ${shoeId}`);
+  } catch (err) {
+    console.warn(`[Scraper] ⚠️ Foto galeri tidak tersimpan (sudah jalankan "npm run db:push"?):`, (err as Error).message);
+  }
+}
+
 export async function scrapeRunRepeatShoe(input: ScrapedData) {
   const html = await fetchHtml(input.url);
   const page = parseRunRepeatHtml(html);
@@ -192,6 +217,11 @@ export async function scrapeRunRepeatShoe(input: ScrapedData) {
       `[Scraper] 🧪 Dry-run OK: ${validated.brand} ${validated.model} [${validated.category}] ` +
         `${validated.sizing}/${validated.breathability} ${validated.specs.weightGrams}g drop ${validated.specs.dropMm} stack ${validated.specs.heelStackMm}/${validated.specs.forefootStackMm} plat ${validated.specs.plateType}`
     );
+    return validated;
+  }
+
+  if (input.imagesOnly) {
+    await saveGalleryImages(validated.id, page.galleryImages);
     return validated;
   }
 
@@ -231,6 +261,7 @@ export async function scrapeRunRepeatShoe(input: ScrapedData) {
   };
 
   await db.insert(shoes).values(dbRecord).onConflictDoUpdate({ target: shoes.id, set: dbRecord });
+  await saveGalleryImages(validated.id, page.galleryImages);
 
   console.log(
     `[Scraper] ✅ Tersimpan: ${validated.brand} ${validated.model} [${validated.category}${

@@ -147,3 +147,19 @@ Fixture ada di `scripts/__fixtures__/` (ASICS Novablast 4, HOKA Speedgoat 5). Un
 2. **Perubahan DOM RunRepeat**: bila banyak `needs_review` mendadak, periksa selector di `lib/runrepeat-parser.ts` (`readComparisonRows`, `readFacts`, `readFitVote`) dengan menjalankan `npm run test` terhadap fixture baru.
 3. **Target DB**: `TURSO_DATABASE_URL` terisi → menulis ke Turso Cloud; kosong → `data/shoes.db`. `.env.local` menimpa `.env`.
 4. **Skema DB tanpa migrasi**: proyek memakai `drizzle-kit push` (folder `drizzle/` tidak ada). Backup DB sebelum push.
+
+---
+
+## Foto referensi & indeks visual (prediktor on-device)
+
+Alur: **scrape galeri → audit → embed → eval**. Lihat `docs/adr/ADR-002-on-device-shoe-predictor.md`.
+
+| Perintah | Fungsi |
+|---|---|
+| `npm run db:push` | Buat tabel `shoe_images` (sekali). Cek dulu `TURSO_DATABASE_URL` — `.env` mengalahkan `.env.local`; untuk DB lokal beri `TURSO_DATABASE_URL=file:./data/shoes.db` di depan perintah. |
+| `npm run scrape:images` | Isi `shoe_images` untuk semua sepatu di DB (`--from-db --images-only`). Tabel `shoes` **tidak** diubah. |
+| `npm run images:audit [-- --sheet]` | Hitung foto usable/detail/lab per sepatu; `--sheet` → `scripts/report/contact-sheet.html`. |
+| `npm run vision:embed [-- --model clip\|dinov2\|siglip --accept 0.72 --only id1,id2 --no-flip]` | Unduh foto ke `.cache/vision/images/`, embed, simpan `public/vision/index-<model>-v1.bin` + `manifest-<model>-v1.json`. |
+| `npm run vision:eval [-- --model clip --write]` | Top-1/3/5 pada foto uji eksternal (`data/eval/<shoeId>/*.jpg` + 2 foto uji di folder induk) dan leave-one-out; `--write` menambah baris ke `docs/vision-eval.md`. |
+
+Catatan: label di nama file galeri hanya petunjuk (mis. `stack` bisa foto lari, `outsole` bisa frame video). `embed-catalog` memakai foto `usable` sebagai *seed*, lalu menerima foto lain bila cosine ke centroid seed ≥ `--accept`. Hanya vektor yang di-commit; foto tidak.

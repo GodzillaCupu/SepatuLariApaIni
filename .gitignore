@@ -49,3 +49,11 @@ public/workbox-*
 public/worker-*
 public/fallback-*
 
+
+# Vision tooling (artefak lokal; hanya public/vision/* yang di-commit)
+.cache/
+scripts/report/
+data/eval/
+
+# Foto uji lokal untuk dev server
+public/dev-samples/

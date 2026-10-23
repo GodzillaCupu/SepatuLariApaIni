@@ -6,6 +6,18 @@ Format log ini mengikuti standar [Keep a Changelog](https://keepachangelog.com/i
 
 ## [Unreleased]
 
+### Added (prediktor sepatu on-device, tahap 1–2) — 2026-10-23
+- **Multi-foto per sepatu**: tabel baru `shoe_images` (`shoe_id`, `url`, `kind` product|detail|lab, `label`, `usable`, `source`; unik per shoe+url). Perlu `npm run db:push`. `shoes.image_url` tetap dipakai untuk thumbnail.
+- **Parser galeri** `scripts/lib/gallery-images.ts`: ambil semua foto galeri RunRepeat (hanya galeri sepatu itu), dedupe ukuran (prefer ≥720px), klasifikasi `kind` dari nama file (hanya petunjuk awal; saringan akhir via embedding). `parseRunRepeatHtml` kini mengembalikan `galleryImages`; scraper menyimpannya (`saveGalleryImages`, kegagalan tidak menggagalkan scrape utama).
+- **`--images-only`** (`scrape-bulk`, script `npm run scrape:images`): backfill hanya `shoe_images`, tabel `shoes` tidak diubah.
+- **`npm run images:audit`** (`scripts/audit-images.ts`, read-only): hitung foto usable/detail/lab per sepatu, tandai < 3 usable; `--sheet` menulis `scripts/report/contact-sheet.html` untuk cek mata.
+- **Matematika vektor bersama** `src/lib/vision/ondevice/vector.ts` (`l2normalize`, `keepInliers` = buang foto outlier terhadap centroid, `rankShoes` = top-K per sepatu) + tes. Dipakai script build dan (nanti) klien browser.
+- **Scan on-device (UI, tahap 3)**: `ScanShoeSheet` kini memprediksi di perangkat (CLIP q8 via transformers.js/WASM → cosine ke indeks `public/vision/`), menampilkan **5 "perkiraan"** + label keyakinan (Cukup yakin / Perkiraan / Kurang yakin, tanpa persen). Gemini jadi tombol opsional "Scan lebih akurat (AI, butuh API key)" memakai foto yang sama. Modul: `src/lib/vision/ondevice/{embedder,index-store,predict,vector}.ts` + tes. Dev: tombol "Uji cepat (dev)" memakai `public/dev-samples/` (gitignored) dan panel debug skor/waktu. `next.config.mjs`: alias `sharp`/`onnxruntime-node` = false (klien) dan `@huggingface/transformers` = false (SSR). `@huggingface/transformers` dipindah ke `dependencies`.
+- **ADR-002** `docs/adr/ADR-002-on-device-shoe-predictor.md` (Proposed): hybrid on-device + BYOK opsional, hasil berupa prediksi 3–5 sepatu.
+
+### On hold
+- **Foto referensi milik sendiri** (ditunda atas keputusan pemilik proyek, 2026-10-23). Rancangan bila dilanjutkan: taruh foto di `data/reference-photos/<shoeId>/*.jpg` (gitignore) → script `scripts/add-reference-photos.ts` memvalidasi `shoeId`, menulis baris `shoe_images` (`source="own"`, `kind="product"`, `usable=1`, `url="file:<path>"`) → `embed-catalog` membaca semua baris `usable=1` apa pun sumbernya, jadi pipeline tidak perlu diubah. Di repo hanya vektor (`public/vision/*`) yang masuk, foto asli tidak. HEIC dikonversi dulu (`sips -s format jpeg`). Dicabut bila hasil evaluasi top-5 < ~80%.
+
 ### Added (banding sepatu & AI Vision Scan) — 2026-10-23
 - **Banding sepatu (Milestone 2)**: tombol "Bandingkan" di kartu (maks 3 sepatu) + bar melayang → halaman `/bandingkan?ids=a,b` (`src/app/bandingkan/page.tsx`). Menampilkan bar visual selisih berat/drop/stack (yang paling ringan disorot) dan baris atribut (pelat, busa, bantalan, fit, adem/panas, pace) dengan penanda "beda". Logika murni di `src/lib/compare.ts`.
 - **AI Vision Scan (Milestone 4)**: `POST /api/detect-shoe` → Gemini 2.5 Flash (REST) → fuzzy match ke katalog. **BYOK default** (key di `localStorage`, dikirim via header `x-gemini-key`); key server `GEMINI_API_KEY` hanya dipakai saat `NODE_ENV != production` (uji dev). UI: tombol "Scan sepatu" (kamera/galeri, foto diperkecil di klien) dan modal Pengaturan AI. Lihat `docs/adr/ADR-001-ai-vision-scan.md`.

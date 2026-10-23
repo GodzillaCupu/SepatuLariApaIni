@@ -118,12 +118,14 @@ async function parseArgs(argv: string[]): Promise<{
   concurrency: number;
   delayMs: number;
   dryRun: boolean;
+  imagesOnly: boolean;
   reportPath: string | null;
 }> {
   const args = argv.slice(2);
   let concurrency = 2;
   let delayMs = 3000;
   let dryRun = false;
+  let imagesOnly = false;
   let catalogLimit = 20;
   let catalogUrl: string | null = null;
   let fromDb = false;
@@ -141,6 +143,8 @@ async function parseArgs(argv: string[]): Promise<{
       catalogLimit = Math.max(1, parseInt(args[++i], 10) || 20);
     } else if (arg === "--dry-run") {
       dryRun = true;
+    } else if (arg === "--images-only") {
+      imagesOnly = true;
     } else if (arg === "--from-db") {
       fromDb = true;
     } else if (arg === "--report" && args[i + 1]) {
@@ -202,7 +206,7 @@ async function parseArgs(argv: string[]): Promise<{
     }
   }
 
-  return { urls, concurrency, delayMs, dryRun, reportPath };
+  return { urls, concurrency, delayMs, dryRun, imagesOnly, reportPath };
 }
 
 // ─────────────────────────────────────────────
@@ -228,7 +232,8 @@ async function scrapeOne(
   entry: UrlEntry,
   index: number,
   total: number,
-  dryRun: boolean
+  dryRun: boolean,
+  imagesOnly: boolean
 ): Promise<JobResult> {
   const start = Date.now();
   const label = `[${index + 1}/${total}]`;
@@ -236,7 +241,7 @@ async function scrapeOne(
   console.log(`\n${label} 🔍 Scraping: ${entry.url}`);
 
   try {
-    const result = await scrapeRunRepeatShoe({ ...entry, dryRun });
+    const result = await scrapeRunRepeatShoe({ ...entry, dryRun, imagesOnly });
     const durationMs = Date.now() - start;
     console.log(
       `${label} ✅ Berhasil: ${result.brand} ${result.model} -> [${result.category}${
@@ -274,7 +279,8 @@ async function runWithConcurrency(
   entries: UrlEntry[],
   concurrency: number,
   delayMs: number,
-  dryRun: boolean
+  dryRun: boolean,
+  imagesOnly: boolean
 ): Promise<JobResult[]> {
   const results: JobResult[] = [];
   const total = entries.length;
@@ -290,7 +296,7 @@ async function runWithConcurrency(
         await sleep(delayMs);
       }
 
-      const res = await scrapeOne(entries[index], index, total, dryRun);
+      const res = await scrapeOne(entries[index], index, total, dryRun, imagesOnly);
       results.push(res);
     }
   }
@@ -307,7 +313,7 @@ async function runWithConcurrency(
 // ─────────────────────────────────────────────
 
 async function main() {
-  const { urls, concurrency, delayMs, dryRun, reportPath } = await parseArgs(process.argv);
+  const { urls, concurrency, delayMs, dryRun, imagesOnly, reportPath } = await parseArgs(process.argv);
 
   if (urls.length === 0) {
     console.log(`
@@ -329,6 +335,7 @@ Opsi:
   --limit <n>         Batas jumlah sepatu dari katalog (default: 20)
   --dry-run           Fetch + parse + validasi tanpa menulis ke DB
   --from-db           Re-scrape semua sepatu yang sudah ada di DB
+  --images-only       Hanya isi tabel shoe_images (galeri foto); tabel shoes TIDAK diubah
   --report <file>     Simpan hasil ke file JSON
 
   4. Perbaiki data lama di DB (disarankan: --dry-run dulu):
@@ -340,11 +347,12 @@ Opsi:
   printSeparator();
   console.log(`🚀 Memulai Bulk Scraping: ${urls.length} target URL`);
   console.log(`   Concurrency: ${concurrency} | Delay: ${formatDuration(delayMs)}`);
+  if (imagesOnly) console.log("   🖼  MODE: IMAGES-ONLY (hanya shoe_images, tabel shoes tidak diubah)");
   if (dryRun) console.log("   ⚠️  MODE: DRY-RUN (fetch + validasi, TIDAK menulis database)");
   printSeparator();
 
   const startTime = Date.now();
-  const results = await runWithConcurrency(urls, concurrency, delayMs, dryRun);
+  const results = await runWithConcurrency(urls, concurrency, delayMs, dryRun, imagesOnly);
   const totalDuration = Date.now() - startTime;
 
   // Ringkasan

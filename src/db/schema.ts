@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, uniqueIndex, index } from "drizzle-orm/sqlite-core";
 
 export const shoes = sqliteTable("shoes", {
   id: text("id").primaryKey(), // slug: "asics-novablast-4"
@@ -44,3 +44,30 @@ export const shoes = sqliteTable("shoes", {
 
 export type ShoeRecord = typeof shoes.$inferSelect;
 export type NewShoeRecord = typeof shoes.$inferInsert;
+
+/**
+ * Foto referensi per sepatu (untuk pengenalan visual on-device). Satu sepatu → banyak foto.
+ * kind: product (sepatu utuh) | detail (bagian) | lab (frame/gambar uji). usable = layak di-embed.
+ */
+export const shoeImages = sqliteTable(
+  "shoe_images",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    shoeId: text("shoe_id")
+      .notNull()
+      .references(() => shoes.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    kind: text("kind").notNull().default("product"),
+    label: text("label").notNull().default(""),
+    usable: integer("usable", { mode: "boolean" }).notNull().default(true),
+    source: text("source").notNull().default("runrepeat"),
+    createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  },
+  (t) => ({
+    shoeUrlUnique: uniqueIndex("shoe_images_shoe_url_uq").on(t.shoeId, t.url),
+    shoeIdx: index("shoe_images_shoe_idx").on(t.shoeId),
+  })
+);
+
+export type ShoeImageRecord = typeof shoeImages.$inferSelect;
+export type NewShoeImageRecord = typeof shoeImages.$inferInsert;

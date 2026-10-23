@@ -18,10 +18,15 @@
     "scrape:catalog": "tsx scripts/scrape-bulk.ts --catalog https://runrepeat.com/catalog/running-shoes",
     "test": "vitest run",
     "db:audit": "tsx scripts/audit-data.ts",
-    "scrape:fix": "tsx scripts/scrape-bulk.ts --from-db"
+    "scrape:fix": "tsx scripts/scrape-bulk.ts --from-db",
+    "scrape:images": "tsx scripts/scrape-bulk.ts --from-db --images-only",
+    "images:audit": "tsx scripts/audit-images.ts",
+    "vision:embed": "tsx scripts/embed-catalog.ts",
+    "vision:eval": "tsx scripts/eval-vision.ts"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
+    "@huggingface/transformers": "^4.3.1",
     "@libsql/client": "^0.10.0",
     "@tursodatabase/sync": "^0.8.3",
     "clsx": "^2.1.1",
