@@ -1,8 +1,8 @@
 import type { DetectOk } from "./handler";
 
 export const KEY_STORAGE = "lariyuk.gemini_key";
-const MAX_SIDE = 1024;
-const JPEG_QUALITY = 0.8;
+const MAX_SIDE = 1536;
+const JPEG_QUALITY = 0.85;
 
 export class ScanError extends Error {
   constructor(public code: string, message: string) {
@@ -45,7 +45,7 @@ function loadImage(file: File): Promise<HTMLImageElement> {
   });
 }
 
-/** Perkecil (sisi terpanjang 1024 px) → JPEG base64 tanpa prefix. Foto kamera 12 MP jadi ±150 KB. */
+/** Perkecil (sisi terpanjang 1536 px) → JPEG base64 tanpa prefix. Foto kamera 12 MP jadi ±300 KB. */
 export async function prepareImage(file: File): Promise<{ base64: string; mimeType: "image/jpeg"; previewUrl: string }> {
   if (!file.type.startsWith("image/")) throw new ScanError("BAD_IMAGE", "File harus berupa gambar.");
   const img = await loadImage(file);

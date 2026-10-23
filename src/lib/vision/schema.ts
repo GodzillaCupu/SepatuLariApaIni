@@ -17,6 +17,10 @@ export const DetectionSchema = z.object({
   model: z.string().min(1),
   releaseYear: z.number().int().min(2000).max(2100).nullable().optional(),
   colorway: z.string().nullable().optional(),
+  /** Teks/logo yang terbaca pada sepatu (lidah, tumit, sol, insole). Untuk diagnosa akurasi. */
+  visibleText: z.string().nullable().optional(),
+  /** Alasan singkat model memilih jawaban ini. */
+  reasoning: z.string().nullable().optional(),
   confidence: z.number().min(0).max(1),
 });
 export type Detection = z.infer<typeof DetectionSchema>;

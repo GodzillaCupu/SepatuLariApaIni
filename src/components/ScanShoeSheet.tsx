@@ -126,6 +126,13 @@ export function ScanShoeSheet({ open, shoes, onClose, onSelectShoe, onOpenSettin
               {state.result.keySource === "server-dev" && <span className="ml-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-1.5 py-0.5">key server (dev)</span>}
             </p>
 
+            {process.env.NODE_ENV !== "production" && (
+              <details open className="text-[11px] bg-amber-50 border border-amber-200 rounded-xl p-2.5 text-amber-900">
+                <summary className="font-bold cursor-pointer">Hasil AI (dev)</summary>
+                <pre className="mt-1.5 whitespace-pre-wrap break-words font-mono">{JSON.stringify(state.result.detection, null, 2)}</pre>
+              </details>
+            )}
+
             {matched && (
               <button onClick={() => { onSelectShoe(matched); close(); }} className="w-full text-left flex items-center gap-3 bg-emerald-50 border border-emerald-200 rounded-2xl p-3">
                 <ShoeImage src={matched.imageUrl} alt={`${matched.brand} ${matched.model}`} sizes="64px" className="w-16 h-16 rounded-xl border border-emerald-100 shrink-0" />

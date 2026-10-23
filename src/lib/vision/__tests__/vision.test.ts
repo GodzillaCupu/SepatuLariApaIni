@@ -41,6 +41,31 @@ describe("matchShoe", () => {
   it("confidence model rendah → tidak auto-match", () => {
     expect(matchShoe(det("ASICS", "Novablast 4", 0.2), catalog).matchId).toBeNull();
   });
+  it("SC Rebel v5 → SuperComp Rebel menang, bukan Rebel v5 / SC Trainer", () => {
+    const nb: CatalogEntry[] = [
+      { id: "nb-sc-rebel", brand: "New Balance", model: "SuperComp Rebel", releaseYear: 2026 },
+      { id: "nb-rebel-v5", brand: "New Balance", model: "FuelCell Rebel v5" },
+      { id: "nb-sc-trainer-v3", brand: "New Balance", model: "FuelCell SuperComp Trainer v3" },
+      { id: "nb-sc-elite-v5", brand: "New Balance", model: "FuelCell SuperComp Elite v5" },
+    ];
+    for (const model of ["FuelCell SC Rebel", "SC Rebel"]) {
+      const r = matchShoe(det("New Balance", model), nb);
+      expect(r.candidates[0]?.id).toBe("nb-sc-rebel");
+      expect(r.matchId).toBe("nb-sc-rebel");
+    }
+    // Versi "v5" tebakan AI → ambigu dengan Rebel v5: tidak auto-match, tapi SuperComp Rebel tetap #1.
+    const guess = matchShoe(det("New Balance", "SC Rebel v5"), nb);
+    expect(guess.candidates[0]?.id).toBe("nb-sc-rebel");
+    expect(guess.candidates.map((c) => c.id)).not.toContain("nb-sc-trainer-v3");
+  });
+  it("model tidak ada di katalog → tidak ada kandidat bigram-saja", () => {
+    const r = matchShoe(det("ASICS", "Novablast 3"), [
+      { id: "asics-superblast", brand: "ASICS", model: "Superblast" },
+      { id: "asics-gel-kayano-32", brand: "ASICS", model: "Gel Kayano 32" },
+    ]);
+    expect(r.matchId).toBeNull();
+    expect(r.candidates).toEqual([]);
+  });
   it("textSimilarity kosong = 0", () => expect(textSimilarity("", "abc")).toBe(0));
 });
 
@@ -78,6 +103,12 @@ describe("detectShoeWithGemini", () => {
     await expect(
       detectShoeWithGemini({ apiKey: "k", image: img, mimeType: "image/png", fetchImpl: okGemini({}, status) })
     ).rejects.toMatchObject({ code });
+  });
+  it("terima visibleText & reasoning opsional", async () => {
+    const f = okGemini(geminiBody({ brand: "New Balance", model: "SC Rebel", confidence: 0.8, visibleText: "sc rebel", reasoning: "teks lidah" }));
+    const d = await detectShoeWithGemini({ apiKey: "k", image: img, mimeType: "image/jpeg", fetchImpl: f });
+    expect(d.visibleText).toBe("sc rebel");
+    expect(d.reasoning).toBe("teks lidah");
   });
   it("JSON rusak → BAD_RESPONSE", async () => {
     const f = okGemini({ candidates: [{ content: { parts: [{ text: "bukan json" }] } }] });

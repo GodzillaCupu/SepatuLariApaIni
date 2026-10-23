@@ -1,11 +1,15 @@
 import { Detection, DetectionSchema, VisionError } from "./schema";
 
-export const GEMINI_MODEL = "gemini-2.5-flash";
+export const GEMINI_MODEL = "gemini-3.5-flash";
 const ENDPOINT = (model: string) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
-const PROMPT = `Kamu pakar sepatu lari. Identifikasi merek dan model SEPATU LARI pada foto (siluet, logo, teks pada lidah/sol/insole, warna).
-Jawab JSON: brand (nama resmi, mis. "ASICS", "New Balance"), model (tanpa nama brand, mis. "Novablast 4"), releaseYear (tahun rilis bila yakin, selain itu null), colorway (singkat, atau null), confidence (0-1).
-Jika foto bukan sepatu lari atau kamu tidak yakin, isi brand "unknown", model "unknown", confidence rendah. Jangan menebak.`;
+const PROMPT = `Kamu pakar sepatu lari. Identifikasi merek dan model SEPATU LARI pada foto.
+Langkah:
+1. Baca semua teks/logo yang terlihat (lidah, tumit, sisi upper, sol, insole) dan tulis di visibleText (null bila tidak ada yang terbaca).
+2. Tentukan brand dari logo/teks (nama resmi, mis. "ASICS", "New Balance").
+3. Tentukan model: pakai teks yang terbaca lebih dulu; baru siluet, bentuk midsole, dan detail upper. Bedakan model yang mirip, mis. Novablast vs Superblast vs Metaspeed, atau SuperComp Rebel vs SuperComp Trainer vs SuperComp Elite.
+Aturan: model tanpa nama brand (mis. "Superblast 3"). Isi angka versi HANYA bila terbaca jelas pada sepatu atau kamu benar-benar yakin; jika tidak, tulis nama model tanpa versi. releaseYear hanya bila yakin, selain itu null. colorway singkat atau null.
+Beri jawaban terbaikmu; turunkan confidence (0-1) bila hanya mengandalkan siluet. Isi brand dan model "unknown" hanya jika foto jelas bukan sepatu lari. reasoning: satu kalimat alasan.`;
 
 interface Options {
   apiKey: string;
@@ -27,7 +31,7 @@ export async function detectShoeWithGemini(opts: Options): Promise<Detection> {
       body: JSON.stringify({
         contents: [{ parts: [{ text: PROMPT }, { inline_data: { mime_type: mimeType, data: image } }] }],
         generationConfig: {
-          temperature: 0.1,
+          temperature: 0,
           responseMimeType: "application/json",
           responseSchema: {
             type: "OBJECT",
@@ -36,6 +40,8 @@ export async function detectShoeWithGemini(opts: Options): Promise<Detection> {
               model: { type: "STRING" },
               releaseYear: { type: "INTEGER", nullable: true },
               colorway: { type: "STRING", nullable: true },
+              visibleText: { type: "STRING", nullable: true },
+              reasoning: { type: "STRING", nullable: true },
               confidence: { type: "NUMBER" },
             },
             required: ["brand", "model", "confidence"],
@@ -68,6 +74,10 @@ export async function detectShoeWithGemini(opts: Options): Promise<Detection> {
     if (!text) throw new Error("kosong");
     const parsed = DetectionSchema.safeParse(JSON.parse(text));
     if (!parsed.success) throw new Error("skema");
+    // Dev saja: lihat jawaban mentah model (tanpa key/gambar) untuk diagnosa akurasi.
+    if (process.env.NODE_ENV !== "production" && process.env.NODE_ENV !== "test") {
+      console.log("[vision] Gemini:", model, text);
+    }
     return parsed.data;
   } catch {
     throw new VisionError("BAD_RESPONSE", "Jawaban Gemini tidak bisa dibaca. Coba foto lain.", 502);
